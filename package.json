@@ -1,0 +1,10 @@
+{
+  "name": "palash-ai",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@neon/functions": "^1.0.0",
+    "pg": "^8.16.3"
+  }
+}
