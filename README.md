@@ -1,25 +1,25 @@
 # PALASH AI
 
-Private, approval-gated command center for personal projects and business operations.
+Private approval-gated command center for personal projects and business operations.
 
-## Live deployment
-- Dashboard and API: https://br-spring-meadow-bhyg1vo9-palashai.compute.c-10.eu-central-1.aws.neon.tech/
-- Health endpoint: `/api/health`
-- Runtime: Neon Functions, Node.js 24
-- Database: Neon PostgreSQL 17, `palash_ai`, branch `production`
+## Infrastructure created
+- Neon project: `palash-ai` (`restless-paper-54015099`)
+- Region: Frankfurt (`aws-eu-central-1`)
+- PostgreSQL 17, database `palash_ai`, branch `production`
+- Seven specialist-agent records and core tables are present.
+- Neon Function slug: `palashai`; deployment bundle is present in `deploy/`.
 
-## Architecture
-- Neon PostgreSQL: persistent users, projects, agents, tasks, approvals, settings and activity logs.
-- Neon Functions: HTTP API and responsive dashboard.
-- The repository is private. No paid service is configured.
+## Deployment status
+The function deployment record is completed, but its HTTP endpoint has not passed verification (external health check returned HTTP 502). The database owner account was not initialized. Do not treat the dashboard as production-ready until function environment variables are restored and `/api/health` and owner sign-in pass.
 
-## Owner sign-in
-- Email: `owner@palash.ai`
-- The initial password is provided separately in the deployment handoff. Do not commit it.
-- Session token expires after 24 hours.
+## Safety and scope
+The intended release includes the command center, project tracking, task queue, specialist-agent profiles, approvals and activity history. Shell execution, repository writes, production deployments, destructive migrations, payments and external messages must remain disabled until separately scoped credentials, integration tests and owner approval enforcement are in place.
 
-## Safety and current release scope
-This release provides the command center, seven specialist-agent profiles, project tracking, task queue, approvals and activity history. It does not yet autonomously execute shell commands, modify repositories, deploy applications, run migrations, make payments, or send external messages. Those integrations require separately scoped credentials, tests and enforced approval checks before activation.
+## Secrets
+Never commit `.env`, database URLs, owner passwords, API keys or JWT secrets. Neon injects `DATABASE_URL` into deployed functions. Configure owner credentials only through the function's secret environment settings.
 
 ## Source bundle
-`deploy/palashai-function.zip.b64` is the deployed function source bundle encoded as base64. Decode it to a ZIP to inspect or redeploy. `DATABASE_URL` is injected by Neon. Never commit `.env`, database URLs, owner passwords, API keys or JWT secrets.
+- `deploy/palashai-function.zip.b64` — first bundle
+- `deploy/palashai-function-v2.zip.b64` — corrected template-escaping bundle
+
+Decode a `.b64` bundle to ZIP before inspecting or redeploying.
