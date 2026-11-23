@@ -1,0 +1,27 @@
+name: Build PALASH AI Neon Function
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "index.mjs"
+      - "package.json"
+      - ".github/workflows/build-neon-function.yml"
+permissions:
+  contents: read
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --no-audit --no-fund
+      - run: |
+          npx esbuild index.mjs --bundle --platform=node --target=node24 --format=esm --banner:js="import{createRequire as ___cr}from'module';import{fileURLToPath as ___f}from'url';import{dirname as ___d}from'path';const require=___cr(import.meta.url);const __filename=___f(import.meta.url);const __dirname=___d(__filename);" --outfile=dist/index.mjs
+          cd dist && zip -j ../palashai-function-bundled.zip index.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: palashai-function-bundle
+          path: palashai-function-bundled.zip
+          retention-days: 1
