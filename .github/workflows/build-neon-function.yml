@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - "index.mjs"
+      - "deploy/palashai-function-v2.zip.b64"
       - "package.json"
       - ".github/workflows/build-neon-function.yml"
 permissions:
@@ -17,8 +17,12 @@ jobs:
         with:
           node-version: 24
       - run: npm install --no-audit --no-fund
-      - run: |
-          npx esbuild index.mjs --bundle --platform=node --target=node24 --format=esm --banner:js="import{createRequire as ___cr}from'module';import{fileURLToPath as ___f}from'url';import{dirname as ___d}from'path';const require=___cr(import.meta.url);const __filename=___f(import.meta.url);const __dirname=___d(__filename);" --outfile=dist/index.mjs
+      - name: Extract source and bundle dependencies
+        run: |
+          base64 --decode deploy/palashai-function-v2.zip.b64 > source.zip
+          mkdir source
+          unzip -q source.zip -d source
+          npx esbuild source/index.mjs --bundle --platform=node --target=node24 --format=esm --banner:js="import{createRequire as ___cr}from'module';import{fileURLToPath as ___f}from'url';import{dirname as ___d}from'path';const require=___cr(import.meta.url);const __filename=___f(import.meta.url);const __dirname=___d(__filename);" --outfile=dist/index.mjs
           cd dist && zip -j ../palashai-function-bundled.zip index.mjs
       - uses: actions/upload-artifact@v4
         with:
