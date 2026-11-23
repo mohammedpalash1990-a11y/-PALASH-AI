@@ -2,17 +2,19 @@
 
 Private approval-gated command center for personal projects and business operations.
 
-## Infrastructure created
+## Infrastructure
 - Neon project: `palash-ai` (`restless-paper-54015099`)
 - Region: Frankfurt (`aws-eu-central-1`)
 - PostgreSQL 17, database `palash_ai`, production branch
 - Core tables and seven specialist-agent records are present.
-- Neon Function slug: `palashai`
+- Neon Function: `palashai`, latest deployment #4 is marked completed.
 
-## Current deployment blocker
-The latest Neon Function deployment failed to load because the uploaded ZIP was not bundled: the runtime cannot resolve the external `pg` package. The earlier unbundled ZIPs are not deployable. The database currently has seven agent records but zero owner users, projects, tasks, or approvals. The dashboard is not operational.
+## Current status
+The source is now bundled with esbuild, including `pg` and Neon Functions dependencies. GitHub Actions build succeeded and the bundled deployment ZIP is committed at `deploy/palashai-function-bundled.zip.b64`. Neon deployment #4 completed.
 
-A GitHub Actions workflow, `.github/workflows/build-neon-function.yml`, has been added to install dependencies, bundle the Node.js 24 function with esbuild, and upload a ZIP artifact. The workflow has not yet produced a verified artifact. After the bundled ZIP is available, redeploy the function and verify `/api/health`, owner sign-in, and the initial database records.
+The live `/api/health` request currently returns HTTP 500. The database still contains seven agent records and zero owner users, projects, tasks, or approvals. The function's required runtime configuration must be checked in Neon Console: `DATABASE_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `JWT_SECRET`. Neon injects `DATABASE_URL` automatically; set or verify the owner email, password, and JWT secret in the Function's environment settings. Then invoke `/api/health`, sign in, and confirm the owner record and dashboard data.
+
+Do not treat PALASH AI as operational until health check and owner sign-in pass.
 
 ## Safety and scope
 This release is a command center and task tracker, not yet an autonomous execution agent. Shell execution, repository writes, production deployments, destructive migrations, payments, and external messages remain disabled until scoped credentials, integration tests, and owner approval enforcement are implemented.
@@ -20,10 +22,10 @@ This release is a command center and task tracker, not yet an autonomous executi
 Production deployments, destructive database operations, payments, and external messages must require explicit owner approval.
 
 ## Secrets
-Never commit `.env`, database URLs, owner passwords, API keys, or JWT secrets. Configure `DATABASE_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `JWT_SECRET` only through Neon Function environment settings.
+Never commit `.env`, database URLs, owner passwords, API keys, or JWT secrets. Configure runtime secrets only through Neon Function environment settings.
 
-## Source bundle
-- `deploy/palashai-function.zip.b64` — first unbundled source archive
-- `deploy/palashai-function-v2.zip.b64` — corrected source archive, also unbundled
-
-These source archives must be bundled with esbuild before deployment.
+## Build and deployment files
+- `.github/workflows/build-neon-function.yml` — bundles the function using GitHub Actions.
+- `deploy/palashai-function.zip.b64` — first unbundled source archive.
+- `deploy/palashai-function-v2.zip.b64` — corrected unbundled source archive.
+- `deploy/palashai-function-bundled.zip.b64` — deployable, esbuild-bundled function archive.
