@@ -1,0 +1,6 @@
+{
+  "name": "PALASH AI",
+  "description": "Autonomous AI Agent Platform for multi-agent engineering, repository automation, database governance, project orchestration, and business operations.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,300 @@
+import React, { useEffect, useState } from 'react';
+import { AlertCircle, CheckCircle2, MinusCircle, RefreshCw } from 'lucide-react';
+import type { AuditLogItem, HealthStatus } from '../types';
+
+interface MonitoringMetrics {
+  uptimeSec: number;
+  memoryMb: number;
+  apiMetrics: {
+    totalRequests: number;
+    errorCount: number;
+    avgLatencyMs: number;
+    lastHealthCheckAt: string | null;
+  };
+  lastBackupAt: string | null;
+  emergencyStop: boolean;
+  postgres: HealthStatus['database']['postgres'];
+  agentStats: Array<{
+    id: string;
+    name: string;
+    status: string;
+    completedTasks: number;
+    failedTasks: number;
+    avgLatencyMs: number;
+  }>;
+}
+
+interface ReadinessCheck {
+  id: string;
+  label: string;
+  passed: boolean;
+  detail: string;
+}
+
+interface ReadinessPayload {
+  checks: ReadinessCheck[];
+  coreReady: boolean;
+  timestamp: string;
+}
+
+const OPTIONAL_CHECK_IDS = new Set(['neon-postgres', 'github-token', 'backup-verified']);
+
+interface MonitoringAuditViewProps {
+  token: string;
+  health: HealthStatus | null;
+  auditLogs: AuditLogItem[];
+  onRefreshAll: () => Promise<void>;
+}
+
+export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
+  token,
+  health,
+  auditLogs,
+  onRefreshAll,
+}) => {
+  const [metrics, setMetrics] = useState<MonitoringMetrics | null>(null);
+  const [readiness, setReadiness] = useState<ReadinessPayload | null>(null);
+  const [search, setSearch] = useState('');
+
+  const loadMetrics = async () => {
+    const [metricsRes, readinessRes] = await Promise.all([
+      fetch('/api/monitoring/metrics', {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+      fetch('/api/system/readiness', {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    ]);
+    if (metricsRes.ok) {
+      setMetrics(await metricsRes.json());
+    }
+    if (readinessRes.ok) {
+      setReadiness(await readinessRes.json());
+    }
+  };
+
+  useEffect(() => {
+    loadMetrics();
+  }, [token]);
+
+  const handleRefresh = async () => {
+    await Promise.all([loadMetrics(), onRefreshAll()]);
+  };
+
+  const filteredLogs = auditLogs.filter(
+    (l) =>
+      !search.trim() ||
+      l.action.toLowerCase().includes(search.toLowerCase()) ||
+      l.actor.toLowerCase().includes(search.toLowerCase()) ||
+      l.details.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const passedCount = readiness?.checks.filter((c) => c.passed).length ?? 0;
+  const totalChecks = readiness?.checks.length ?? 0;
+
+  return (
+    <div className="space-y-8">
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-white">
+            System Reliability, Telemetry &amp; Immutable Audit Logs
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Live runtime health, API latency, process footprint, Phase 10 readiness audit, and security audit trail.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleRefresh}
+          className="inline-flex min-h-[40px] items-center gap-2 whitespace-nowrap shrink-0 rounded-lg border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-800 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+        >
+          <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>Refresh Telemetry</span>
+        </button>
+      </div>
+
+      {/* Live Health Metrics */}
+      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-xs text-slate-500 dark:text-slate-400">Runtime Status</p>
+          <p
+            className={`mt-2 font-display text-xl font-bold capitalize ${
+              health?.status === 'halted'
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-emerald-700 dark:text-emerald-400'
+            }`}
+          >
+            {health?.status || 'healthy'}
+          </p>
+          <p className="mt-1 font-mono text-xs tabular-nums text-slate-500 dark:text-slate-400">
+            Uptime {metrics ? `${metrics.uptimeSec}s` : '—'} · {metrics ? `${metrics.memoryMb} MB RSS` : ''}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-xs text-slate-500 dark:text-slate-400">API Latency &amp; Volume</p>
+          <p className="mt-2 font-display text-xl font-bold font-mono tabular-nums text-slate-900 dark:text-white">
+            {metrics ? `${metrics.apiMetrics.avgLatencyMs} ms` : '—'}
+          </p>
+          <p className="mt-1 font-mono text-xs tabular-nums text-slate-500 dark:text-slate-400">
+            {metrics ? `${metrics.apiMetrics.totalRequests} requests · ${metrics.apiMetrics.errorCount} 5xx` : ''}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-xs text-slate-500 dark:text-slate-400">AI &amp; GitHub Keys</p>
+          <p className="mt-2 font-display text-xl font-bold text-slate-900 dark:text-white">
+            {health?.geminiConfigured ? 'Gemini Ready' : 'Gemini Unset'}
+          </p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            GitHub Token: {health?.githubTokenConfigured ? 'Configured' : 'Public API only'}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-xs text-slate-500 dark:text-slate-400">Last Verified Backup</p>
+          <p className="mt-2 font-mono text-sm font-semibold tabular-nums text-slate-900 dark:text-white">
+            {metrics?.lastBackupAt ? new Date(metrics.lastBackupAt).toLocaleTimeString() : '—'}
+          </p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            {metrics?.lastBackupAt ? new Date(metrics.lastBackupAt).toLocaleDateString() : 'No snapshot yet'}
+          </p>
+        </div>
+      </section>
+
+      {/* Phase 10 Production Readiness Audit */}
+      <section className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-2 border-b border-slate-100 pb-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
+              Phase 10 Production Readiness Audit
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Live deployment checklist covering authentication, schema, agent governance, AI provider, and external bridges.
+            </p>
+          </div>
+          {readiness && (
+            <div className="text-xs font-semibold tabular-nums">
+              <span
+                className={
+                  readiness.coreReady
+                    ? 'text-emerald-700 dark:text-emerald-400'
+                    : 'text-amber-700 dark:text-amber-400'
+                }
+              >
+                {readiness.coreReady ? 'Core Systems Ready' : 'Core Attention Needed'}
+              </span>
+              <span className="ml-2 font-mono text-slate-500 dark:text-slate-400">
+                · {passedCount}/{totalChecks} checks passed
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {(readiness?.checks || []).map((check) => {
+            const isOptional = !check.passed && OPTIONAL_CHECK_IDS.has(check.id);
+            const statusText = check.passed
+              ? 'Passed'
+              : isOptional
+                ? 'Optional'
+                : 'Attention';
+            return (
+              <div
+                key={check.id}
+                className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 p-3.5 dark:border-slate-800"
+              >
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-slate-900 dark:text-white">
+                    {check.label}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {check.detail}
+                  </p>
+                </div>
+                <div
+                  className={`inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold ${
+                    check.passed
+                      ? 'text-emerald-700 dark:text-emerald-400'
+                      : isOptional
+                        ? 'text-slate-600 dark:text-slate-300'
+                        : 'text-amber-700 dark:text-amber-400'
+                  }`}
+                >
+                  {check.passed ? (
+                    <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                  ) : isOptional ? (
+                    <MinusCircle className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  <span>{statusText}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Audit Logs */}
+      <section className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+          <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
+            Security &amp; Execution Audit Trail ({filteredLogs.length})
+          </h3>
+          <input
+            type="search"
+            aria-label="Filter audit logs"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Filter actor, action, or details..."
+            className="min-h-[38px] rounded-lg border border-slate-300 bg-white px-3 text-xs sm:w-64 dark:border-slate-700 dark:bg-slate-950"
+          />
+        </div>
+
+        <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+          <table className="w-full text-left text-xs">
+            <thead className="border-b border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
+              <tr>
+                <th className="px-4 py-3 font-semibold">Timestamp</th>
+                <th className="px-4 py-3 font-semibold">Actor</th>
+                <th className="px-4 py-3 font-semibold">Action</th>
+                <th className="px-4 py-3 font-semibold">Outcome</th>
+                <th className="px-4 py-3 font-semibold">Details</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {filteredLogs.slice(0, 50).map((log) => (
+                <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                  <td className="px-4 py-2.5 font-mono tabular-nums text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    {new Date(log.timestamp).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-2.5 font-mono text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                    {log.actor}
+                  </td>
+                  <td className="px-4 py-2.5 font-mono font-medium text-slate-900 dark:text-white whitespace-nowrap">
+                    {log.action}
+                  </td>
+                  <td
+                    className={`px-4 py-2.5 font-semibold uppercase whitespace-nowrap ${
+                      log.outcome === 'success'
+                        ? 'text-emerald-700 dark:text-emerald-400'
+                        : log.outcome === 'blocked' || log.outcome === 'error'
+                          ? 'text-red-600 dark:text-red-400'
+                          : 'text-amber-700 dark:text-amber-400'
+                    }`}
+                  >
+                    {log.outcome}
+                  </td>
+                  <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300">
+                    {log.details}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+};
