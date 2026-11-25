@@ -95,6 +95,7 @@ function hasEnvAdminConfigured(): boolean {
 }
 
 async function createApp(): Promise<express.Express> {
+  await palashStore.initialize();
   const app = express();
   app.set('trust proxy', 1);
   app.use(express.json({ limit: '1mb' }));
@@ -150,6 +151,7 @@ async function createApp(): Promise<express.Express> {
         localStoreInitialized: true,
         tablesCount: palashStore.listCanonicalTables().length,
         postgres: pgStatus,
+        persistentStore: palashStore.getPersistenceStatus(),
       },
       agentsCount: db.agents.length,
       ownerAccountReady: db.users.length > 0 || hasEnvAdminConfigured(),
@@ -1939,11 +1941,11 @@ async function createApp(): Promise<express.Express> {
       },
       {
         id: 'neon-postgres',
-        label: 'External Neon PostgreSQL 17 Bridge',
-        passed: pgHealth.connected,
-        detail: pgHealth.connected
-          ? `Connected (${pgHealth.database})`
-          : 'Optional: set DATABASE_URL in Secrets to switch from local store',
+        label: 'Neon PostgreSQL Persistent Primary Store',
+        passed: palashStore.getPersistenceStatus().connected && pgHealth.connected,
+        detail: palashStore.getPersistenceStatus().connected
+          ? `Persistent state storage connected (${pgHealth.database})`
+          : `Persistent state storage unavailable: ${palashStore.getPersistenceStatus().error || 'DATABASE_URL is not configured'}`,
       },
       {
         id: 'github-token',
