@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import type { Pool } from 'pg';
 import path from 'node:path';
 import { CANONICAL_AGENTS } from './core/orchestrator.ts';
 import { hashPassword } from './core/security.ts';
@@ -386,10 +387,85 @@ function createSeedDatabase(): PalashDatabase {
 
 class PalashStore {
   private data: PalashDatabase;
+  private databasePool: Pool | null = null;
+  private persistenceQueue: Promise<void> = Promise.resolve();
+  private persistenceError: string | null = null;
+  private initialized = false;
 
   constructor() {
     this.data = this.load();
     this.syncEnvAdmin();
+  }
+
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+    const databaseUrl = process.env.DATABASE_URL?.trim();
+    if (databaseUrl) {
+      const { Pool } = await import('pg');
+      this.databasePool = new Pool({
+        connectionString: databaseUrl,
+        ssl: databaseUrl.includes('localhost') || databaseUrl.includes('127.0.0.1')
+          ? false
+          : { rejectUnauthorized: false },
+        max: 3,
+        connectionTimeoutMillis: 10000,
+        idleTimeoutMillis: 30000,
+      });
+      await this.databasePool.query(`
+        CREATE TABLE IF NOT EXISTS palash_ai_state (
+          id SMALLINT PRIMARY KEY CHECK (id = 1),
+          state JSONB NOT NULL,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `);
+      const existing = await this.databasePool.query(
+        'SELECT state FROM palash_ai_state WHERE id = 1'
+      );
+      if (existing.rows[0]?.state) {
+        this.data = existing.rows[0].state as PalashDatabase;
+      } else {
+        await this.databasePool.query(
+          'INSERT INTO palash_ai_state (id, state) VALUES (1, $1::jsonb) ON CONFLICT (id) DO NOTHING',
+          [JSON.stringify(this.data)]
+        );
+        const confirmed = await this.databasePool.query(
+          'SELECT state FROM palash_ai_state WHERE id = 1'
+        );
+        if (confirmed.rows[0]?.state) {
+          this.data = confirmed.rows[0].state as PalashDatabase;
+        }
+      }
+      this.syncEnvAdmin();
+      await this.persistToDatabase();
+    }
+    this.initialized = true;
+  }
+
+  getPersistenceStatus(): { mode: 'neon-postgres' | 'local-file'; connected: boolean; error: string | null } {
+    return {
+      mode: this.databasePool ? 'neon-postgres' : 'local-file',
+      connected: Boolean(this.databasePool) && !this.persistenceError,
+      error: this.persistenceError,
+    };
+  }
+
+  private async persistToDatabase(): Promise<void> {
+    if (!this.databasePool) return;
+    await this.databasePool.query(
+      'INSERT INTO palash_ai_state (id, state, updated_at) VALUES (1, $1::jsonb, NOW()) ON CONFLICT (id) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW()',
+      [JSON.stringify(this.data)]
+    );
+    this.persistenceError = null;
+  }
+
+  private queueDatabasePersist(): void {
+    if (!this.databasePool) return;
+    this.persistenceQueue = this.persistenceQueue
+      .then(() => this.persistToDatabase())
+      .catch((error: unknown) => {
+        this.persistenceError = error instanceof Error ? error.message : String(error);
+        console.error('PALASH AI persistent storage write failed:', this.persistenceError);
+      });
   }
 
   private load(): PalashDatabase {
@@ -442,7 +518,11 @@ class PalashStore {
 
   mutate(fn: (db: PalashDatabase) => void): PalashDatabase {
     fn(this.data);
-    this.persist(this.data);
+    if (this.databasePool) {
+      this.queueDatabasePersist();
+    } else {
+      this.persist(this.data);
+    }
     return this.data;
   }
 
