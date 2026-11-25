@@ -468,6 +468,19 @@ class PalashStore {
       });
   }
 
+  async flush(): Promise<void> {
+    await this.persistenceQueue;
+    await this.persistToDatabase();
+  }
+
+  async close(): Promise<void> {
+    await this.flush();
+    if (this.databasePool) {
+      await this.databasePool.end();
+      this.databasePool = null;
+    }
+  }
+
   private load(): PalashDatabase {
     try {
       if (fs.existsSync(STATE_FILE)) {
