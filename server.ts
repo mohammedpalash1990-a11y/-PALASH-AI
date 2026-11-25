@@ -2033,6 +2033,20 @@ with zipfile.ZipFile('public/palash-ai-project.zip', 'w', zipfile.ZIP_DEFLATED) 
   return app;
 }
 
+const shutdown = async (signal: string): Promise<void> => {
+  console.log(`PALASH AI received ${signal}; flushing persistent state...`);
+  try {
+    await palashStore.close();
+  } catch (error) {
+    console.error('PALASH AI shutdown persistence error:', error);
+  } finally {
+    process.exit(0);
+  }
+};
+
+process.once('SIGTERM', () => void shutdown('SIGTERM'));
+process.once('SIGINT', () => void shutdown('SIGINT'));
+
 createApp().then((app) => {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`PALASH AI listening on http://localhost:${PORT}`);
