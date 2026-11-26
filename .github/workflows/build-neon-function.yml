@@ -207,14 +207,24 @@ jobs:
           function gitBlobSha(content) {
             return createHash("sha1").update("blob "+Buffer.byteLength(content)+"\0"+content).digest("hex");
           }
+          function integrationEncryptionKey() { return createHmac("sha256",JWT_SECRET).update("palash-ai-integration-token-v1").digest(); }
+          function encryptIntegrationConfig(value) {
+            const iv=randomBytes(12),cipher=createCipheriv("aes-256-gcm",integrationEncryptionKey(),iv),encrypted=Buffer.concat([cipher.update(value,"utf8"),cipher.final()]);
+            return {iv:iv.toString("base64"),tag:cipher.getAuthTag().toString("base64"),data:encrypted.toString("base64")};
+          }
+          function decryptIntegrationConfig(record) {
+            const decipher=createDecipheriv("aes-256-gcm",integrationEncryptionKey(),Buffer.from(record.iv,"base64"));
+            decipher.setAuthTag(Buffer.from(record.tag,"base64"));
+            return Buffer.concat([decipher.update(Buffer.from(record.data,"base64")),decipher.final()]).toString("utf8");
+          }
           async function getIntegrationConfig(provider) {
             const r=await pool.query("SELECT value FROM agent_settings WHERE key=$1",["integration_"+provider]);
             if(!r.rowCount)return null;
             const v=typeof r.rows[0].value==="string"?JSON.parse(r.rows[0].value):r.rows[0].value;
-            try{return JSON.parse(decryptGithubToken(v));}catch{return null;}
+            try{return JSON.parse(decryptIntegrationConfig(v));}catch{return null;}
           }
           async function saveIntegrationConfig(provider,config) {
-            const sealed=encryptGithubToken(JSON.stringify(config));
+            const sealed=encryptIntegrationConfig(JSON.stringify(config));
             await pool.query("INSERT INTO agent_settings(key,value) VALUES($1,$2::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value,updated_at=now()",["integration_"+provider,JSON.stringify(sealed)]);
           }
           async function verifyIntegrationConfig(provider,config) {
