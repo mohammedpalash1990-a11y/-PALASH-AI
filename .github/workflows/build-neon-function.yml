@@ -172,7 +172,7 @@ jobs:
           async function geminiText(prompt) {
             const key=process.env.GEMINI_API_KEY;
             if(!key) throw new Error("GEMINI_API_KEY is not configured");
-            const r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{temperature:0.2}})});
+            const r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(process.env.GEMINI_MODEL || "gemini-3.8-flash")+":generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{temperature:0.2}})});
             const d=await r.json();
             if(!r.ok) throw new Error(d.error?.message||("Gemini request failed: "+r.status));
             return d.candidates?.[0]?.content?.parts?.map(x=>x.text||"").join("").trim()||"No AI response returned";
@@ -280,15 +280,6 @@ jobs:
           PY
           node --check dist/index.mjs
           cd dist && zip -j ../palashai-function-bundled.zip index.mjs
-      - name: Store deployable bundle as base64
-        run: |
-          base64 -w0 palashai-function-bundled.zip > deploy/palashai-function-bundled.zip.b64
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add deploy/palashai-function-bundled.zip.b64
-          git commit -m "Build bundled Neon Function archive"
-          git pull --rebase origin main
-          git push
       - name: Resolve Neon database connection
         id: neon-db
         env:
@@ -309,7 +300,7 @@ jobs:
           DATABASE_URL: ${{ steps.neon-db.outputs.database_url }}
         run: |
           test -n "$GEMINI_API_KEY" || (echo "GEMINI_API_KEY secret is missing" && exit 1)
-          ENV_JSON="$(jq -n --arg gemini "$GEMINI_API_KEY" --arg app "https://palash-ai.pages.dev" --arg db "$DATABASE_URL" '{GEMINI_API_KEY:$gemini,APP_URL:$app,DATABASE_URL:$db}')"
+          ENV_JSON="$(jq -n --arg gemini "$GEMINI_API_KEY" --arg model "gemini-3.8-flash" --arg app "https://palash-ai.pages.dev" --arg db "$DATABASE_URL" '{GEMINI_API_KEY:$gemini,GEMINI_MODEL:$model,APP_URL:$app,DATABASE_URL:$db}')"
           curl --fail-with-body --silent --show-error -X POST \
             "https://console.neon.tech/api/v2/projects/restless-paper-54015099/branches/br-spring-meadow-bhyg1vo9/functions/palashai/deployments" \
             -H "Authorization: Bearer $NEON_API_KEY" \
