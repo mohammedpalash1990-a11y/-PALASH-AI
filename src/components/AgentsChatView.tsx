@@ -48,6 +48,7 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
   const [chatBusy, setChatBusy] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
+  const [integrations, setIntegrations] = useState<Array<{ id: string; name: string; connected: boolean; setup?: string }>>([]);
 
   const [showNewTask, setShowNewTask] = useState(false);
   const [taskTitle, setTaskTitle] = useState('');
@@ -59,6 +60,19 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
   const [liveProgressMap, setLiveProgressMap] = useState<
     Record<string, { progressPercent: number; currentStage: string | null; status: string }>
   >({});
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/integrations', { headers: { Authorization: 'Bearer ' + token } })
+      .then(async (res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (active && data) setIntegrations(data.providers || data.integrations || []);
+      })
+      .catch(() => {
+        if (active) setIntegrations([]);
+      });
+    return () => { active = false; };
+  }, [token]);
 
   // Poll live task progress from backend whenever tasks are executing
   useEffect(() => {
@@ -110,7 +124,7 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
     setChatBusy(true);
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch('/api/agent/command', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -209,7 +223,7 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
                 Agent Command Chat
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Direct conversation with Chief Agent or any specialist with project context.
+                Give PALASH AI a task in Bengali or English. Safe internal work runs automatically; external actions require approval and a connected provider.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap shrink-0">
@@ -299,7 +313,7 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
               type="text"
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
-              placeholder={emergencyStop ? 'System halted by Emergency Stop' : 'Instruct the selected agent...'}
+              placeholder={emergencyStop ? 'System halted by Emergency Stop' : 'Tell PALASH AI what to do or ask...'}
               disabled={emergencyStop || chatBusy}
               className="min-h-[44px] flex-1 rounded-lg border border-slate-300 bg-white px-3.5 text-sm text-slate-900 focus:border-teal-600 focus:outline-none disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
             />
@@ -341,6 +355,18 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
             </span>
           </div>
 
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {integrations.map((item) => (
+              <div key={item.id} className="rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-800">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-xs font-semibold text-slate-800 dark:text-slate-100">{item.name}</span>
+                  <span className={item.connected ? "text-[10px] font-semibold text-emerald-600" : "text-[10px] font-semibold text-amber-600"}>{item.connected ? "Connected" : "Setup needed"}</span>
+                </div>
+                {item.setup && <p className="mt-1 text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">{item.setup}</p>}
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[10px] text-slate-500 dark:text-slate-400">Public social posts are never published without your approval.</p>
           <ul className="mt-3 divide-y divide-slate-100 max-h-[380px] overflow-y-auto dark:divide-slate-800">
             {memories.map((mem) => (
               <li key={mem.id} className="py-3">
@@ -456,6 +482,7 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
                 <option value="database_migration">Database Migration (Mandatory Approval)</option>
                 <option value="production_deploy">Production Deploy (Mandatory Approval)</option>
                 <option value="external_message">External Message (Mandatory Approval)</option>
+                <option value="social_media_publish">Social Media Publishing (Approval + Connected Account)</option>
               </select>
             </div>
 
