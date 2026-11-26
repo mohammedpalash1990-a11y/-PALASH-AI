@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, ShieldCheck, Sun, Moon, ArrowRight } from 'lucide-react';
+import { Lock, ShieldCheck, Sun, Moon, ArrowRight, Download } from 'lucide-react';
 import type { AuthUser, HealthStatus } from '../types';
 
 interface AuthGateProps {
@@ -26,6 +26,37 @@ export const AuthGate: React.FC<AuthGateProps> = ({
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [downloadingZip, setDownloadingZip] = useState(false);
+
+  const handleDownloadZip = async () => {
+    setDownloadingZip(true);
+    try {
+      let res = await fetch('/api/download/project-zip');
+      if (!res.ok) {
+        res = await fetch('/palash-ai-project.zip');
+      }
+      if (!res.ok) throw new Error('Download failed');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'palash-ai-project.zip';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        try {
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        } catch {
+          // cleanup
+        }
+      }, 1500);
+    } catch {
+      setError('Download failed. Please try again or check network connectivity.');
+    } finally {
+      setDownloadingZip(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -224,6 +255,18 @@ export const AuthGate: React.FC<AuthGateProps> = ({
                   </span>
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </button>
+
+                <div className="pt-2 text-center">
+                  <button
+                    type="button"
+                    disabled={downloadingZip}
+                    onClick={handleDownloadZip}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 hover:text-teal-800 hover:underline dark:text-teal-400 dark:hover:text-teal-300"
+                  >
+                    <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>{downloadingZip ? 'Downloading ZIP archive...' : 'Or Download Entire Project Source (ZIP)'}</span>
+                  </button>
+                </div>
               </form>
             </div>
           </div>

@@ -374,6 +374,33 @@ export default function App() {
     }
   };
 
+  const handleDownloadZip = async () => {
+    try {
+      let res = await fetch('/api/download/project-zip');
+      if (!res.ok) {
+        res = await fetch('/palash-ai-project.zip');
+      }
+      if (!res.ok) throw new Error('Download failed');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'palash-ai-project.zip';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        try {
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        } catch {
+          // cleanup
+        }
+      }, 1500);
+    } catch {
+      setBanner({ kind: 'error', text: 'Failed to download project ZIP. Please try again.' });
+    }
+  };
+
   const handleCreateProject = async (payload: {
     name: string;
     repoOwner: string;
@@ -558,15 +585,15 @@ export default function App() {
 
             <PWAInstallButton />
 
-            <a
-              href="/api/download/project-zip"
-              download="palash-ai-project.zip"
+            <button
+              type="button"
+              onClick={handleDownloadZip}
               title="Download full PALASH AI project source code as ZIP"
               className="inline-flex min-h-[40px] items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
               <Download className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" aria-hidden="true" />
               <span className="hidden sm:inline">Download ZIP</span>
-            </a>
+            </button>
 
             <button
               type="button"

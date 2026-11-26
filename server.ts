@@ -99,6 +99,7 @@ async function createApp(): Promise<express.Express> {
   const app = express();
   app.set('trust proxy', 1);
   app.use(express.json({ limit: '1mb' }));
+  app.use(express.static(path.resolve(process.cwd(), 'public')));
 
   // API rate limiting & request latency tracking
   app.use('/api', (req, res, next) => {

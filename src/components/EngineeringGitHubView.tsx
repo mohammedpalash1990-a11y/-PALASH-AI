@@ -234,6 +234,41 @@ export const EngineeringGitHubView: React.FC<EngineeringGitHubViewProps> = ({
     }
   };
 
+  const [downloadingZip, setDownloadingZip] = useState(false);
+
+  const handleDownloadZip = async () => {
+    setDownloadingZip(true);
+    try {
+      let res = await fetch('/api/download/project-zip');
+      if (!res.ok) {
+        res = await fetch('/palash-ai-project.zip');
+      }
+      if (!res.ok) throw new Error('Download failed');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'palash-ai-project.zip';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        try {
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        } catch {
+          // cleanup
+        }
+      }, 1500);
+    } catch {
+      setAuthFeedback({
+        kind: 'error',
+        text: 'Failed to download project ZIP archive. Please retry.',
+      });
+    } finally {
+      setDownloadingZip(false);
+    }
+  };
+
   const handleConnectPat = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!patInput.trim()) return;
@@ -602,14 +637,15 @@ export const EngineeringGitHubView: React.FC<EngineeringGitHubViewProps> = ({
               </span>
             </button>
 
-            <a
-              href="/api/download/project-zip"
-              download="palash-ai-project.zip"
-              className="inline-flex min-h-[40px] items-center gap-1.5 whitespace-nowrap rounded-lg border border-teal-600 bg-teal-50 px-3.5 text-xs font-semibold text-teal-800 hover:bg-teal-100 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-300 dark:hover:bg-teal-950/70"
+            <button
+              type="button"
+              disabled={downloadingZip}
+              onClick={handleDownloadZip}
+              className="inline-flex min-h-[40px] items-center gap-1.5 whitespace-nowrap rounded-lg border border-teal-600 bg-teal-50 px-3.5 text-xs font-semibold text-teal-800 hover:bg-teal-100 disabled:opacity-50 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-300 dark:hover:bg-teal-950/70"
             >
               <Download className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" aria-hidden="true" />
-              <span>Download Project ZIP</span>
-            </a>
+              <span>{downloadingZip ? 'Downloading ZIP...' : 'Download Project ZIP'}</span>
+            </button>
 
             <button
               type="button"
