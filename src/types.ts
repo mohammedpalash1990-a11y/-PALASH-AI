@@ -17,7 +17,8 @@ export type ActionType =
   | 'database_migration'
   | 'database_deletion'
   | 'payment_purchase'
-  | 'external_message';
+  | 'external_message'
+  | 'social_publish';
 
 export type NavSection =
   | 'overview'
@@ -27,7 +28,8 @@ export type NavSection =
   | 'projects'
   | 'finance'
   | 'approvals'
-  | 'monitoring';
+  | 'monitoring'
+  | 'integrations';
 
 export interface AuthUser {
   id: string;
