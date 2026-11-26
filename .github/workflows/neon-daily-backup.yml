@@ -1,0 +1,81 @@
+name: PALASH AI Daily Neon Backup
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 2 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: palash-ai-daily-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve Neon production database connection
+        id: neon-db
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: |
+          test -n "$NEON_API_KEY" || (echo "NEON_API_KEY secret is missing" && exit 1)
+          DATABASE_URL="$(curl --fail-with-body --silent --show-error \
+            "https://console.neon.tech/api/v2/projects/restless-paper-54015099/connection_uri?branch_id=br-spring-meadow-bhyg1vo9&database_name=palash_ai&role_name=palash_ai_owner" \
+            -H "Authorization: Bearer $NEON_API_KEY" \
+            -H "Accept: application/json" | jq -r '.uri')"
+          test -n "$DATABASE_URL" && test "$DATABASE_URL" != "null" || (echo "Neon DATABASE_URL could not be resolved" && exit 1)
+          echo "::add-mask::$DATABASE_URL"
+          echo "database_url=$DATABASE_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Create verified database snapshot
+        env:
+          DATABASE_URL: ${{ steps.neon-db.outputs.database_url }}
+        run: |
+          npm install --no-save --no-audit --no-fund pg
+          node --input-type=module <<'NODE'
+          import pg from 'pg';
+          import { createHmac } from 'node:crypto';
+          import { writeFileSync, mkdirSync } from 'node:fs';
+          const { Client } = pg;
+          const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+          const canonical = (v) => Array.isArray(v) ? '[' + v.map(canonical).join(',') + ']' :
+            v && typeof v === 'object' ? '{' + Object.keys(v).sort().map(k => JSON.stringify(k) + ':' + canonical(v[k])).join(',') + '}' :
+            JSON.stringify(v);
+          try {
+            await client.connect();
+            await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+            const stateResult = await client.query('SELECT state FROM palash_ai_state WHERE id=1');
+            if (!stateResult.rowCount) throw new Error('Workspace state row is missing; backup aborted.');
+            const secretResult = await client.query("SELECT value FROM agent_settings WHERE key='jwt_secret'");
+            if (!secretResult.rowCount) throw new Error('Persistent backup signing key is missing; backup aborted.');
+            const secret = typeof secretResult.rows[0].value === 'string' ? secretResult.rows[0].value : JSON.stringify(secretResult.rows[0].value);
+            const snapshot = stateResult.rows[0].state;
+            const checksum = createHmac('sha256', secret).update(canonical(snapshot)).digest('hex');
+            const metadata = { source: 'scheduled-github-actions', createdAt: new Date().toISOString(), checksumAlgorithm: 'HMAC-SHA256-canonical-json', checksum, snapshot };
+            await client.query('COMMIT');
+            await client.query('INSERT INTO palash_ai_backups(snapshot,checksum,source) VALUES($1::jsonb,$2,$3)', [JSON.stringify(snapshot), checksum, 'scheduled-github-actions']);
+            await client.query("UPDATE palash_ai_state SET state=jsonb_set(COALESCE(state,'{}'::jsonb),'{system}',COALESCE(state->'system','{}'::jsonb)||jsonb_build_object('lastBackupAt',now()::text),true),updated_at=now() WHERE id=1");
+            mkdirSync('backup-output', { recursive: true });
+            writeFileSync('backup-output/palash-ai-backup.json', JSON.stringify(metadata, null, 2));
+            console.log('Verified backup snapshot created. SHA256 HMAC:', checksum);
+          } catch (error) {
+            await client.query('ROLLBACK').catch(() => {});
+            throw error;
+          } finally {
+            await client.end();
+          }
+          NODE
+
+      - name: Store independent offsite backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: palash-ai-neon-backup-${{ github.run_id }}
+          path: backup-output/palash-ai-backup.json
+          if-no-files-found: error
+          retention-days: 30
