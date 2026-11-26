@@ -1,6 +1,8 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import type { ActionType, AgentId, AgentRecord, MemoryRecord, ProjectRecord, TaskRecord } from './core/types.ts';
 
+const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-4-hydrogen';
+
 function getGeminiClient(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
@@ -81,7 +83,7 @@ export async function generateChiefAgentPlan(
 
   const response = await withGeminiRetry(() =>
     ai.models.generateContent({
-      model: 'gemini-4-hydrogen',
+      model: GEMINI_MODEL,
       contents: `Project: ${project.name} (${project.slug})
 Permission Scope: ${project.permissionScope}
 Deployment Policy: ${project.deploymentPolicy}
@@ -182,7 +184,7 @@ export async function runSpecialistAgentExecution(
 
   const response = await withGeminiRetry(() =>
     ai.models.generateContent({
-      model: 'gemini-4-hydrogen',
+      model: GEMINI_MODEL,
       contents: `Execute the assigned task rigorously and produce a structured Execution Report with:
 1. Summary of Analysis / Work Performed
 2. Concrete Findings, Code/SQL/Financial Recommendations, or Checklist
@@ -229,7 +231,7 @@ export async function runInteractiveAgentChat(
 
   const response = await withGeminiRetry(() =>
     ai.models.generateContent({
-      model: 'gemini-4-hydrogen',
+      model: GEMINI_MODEL,
       contents: `Project Context: ${project.name} (${project.slug}) · Policy: ${project.deploymentPolicy} · DB: ${project.dbIsolationLabel}
 Memory:
 ${contextLines || 'None'}
@@ -262,7 +264,7 @@ export async function analyzeSourceCodeWithAgent(
 
   const response = await withGeminiRetry(() =>
     ai.models.generateContent({
-      model: 'gemini-4-hydrogen',
+      model: GEMINI_MODEL,
       contents: `Repository: ${repoSlug}
 File: ${filePath}
 
