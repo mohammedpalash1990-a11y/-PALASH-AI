@@ -60,6 +60,7 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
   const [backups, setBackups] = useState<BackupItem[]>([]);
   const [backupBusy, setBackupBusy] = useState<string | null>(null);
   const [backupError, setBackupError] = useState<string | null>(null);
+  const [backupFeedback, setBackupFeedback] = useState<string | null>(null);
 
   const loadMetrics = async () => {
     const [metricsRes, readinessRes, backupsRes] = await Promise.all([
@@ -93,6 +94,7 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
   const handleCreateBackup = async () => {
     setBackupBusy('create');
     setBackupError(null);
+    setBackupFeedback(null);
     try {
       const res = await fetch('/api/system/backup', {
         method: 'POST',
@@ -111,6 +113,7 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
   const handleDownloadBackup = async (id: string) => {
     setBackupBusy(id);
     setBackupError(null);
+    setBackupFeedback(null);
     try {
       const res = await fetch(`/api/system/backups/${encodeURIComponent(id.replace(/^bkp-/, ''))}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -139,6 +142,7 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
     if (!window.confirm(`Request restore of ${id}? This will require Owner approval and will create a safety snapshot before applying the backup.`)) return;
     setBackupBusy(`restore-${id}`);
     setBackupError(null);
+    setBackupFeedback(null);
     try {
       const numericId = id.replace(/^bkp-/, '');
       const res = await fetch(`/api/system/backups/${encodeURIComponent(numericId)}/restore`, {
@@ -147,7 +151,7 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Restore approval request failed.');
-      setBackupError(`Restore request ${data.approval?.id || ''} created. Open Approvals and approve it to apply the verified snapshot.`);
+      setBackupFeedback(`Restore request ${data.approval?.id || ''} created. Open Approvals and approve it to apply the verified snapshot.`);
       await Promise.all([loadMetrics(), onRefreshAll()]);
     } catch (error) {
       setBackupError(error instanceof Error ? error.message : 'Restore approval request failed.');
@@ -331,6 +335,7 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
           </div>
         </div>
         {backupError && <p role="alert" className="mt-3 text-xs text-red-600 dark:text-red-400">{backupError}</p>}
+        {backupFeedback && <p role="status" className="mt-3 text-xs text-emerald-700 dark:text-emerald-400">{backupFeedback}</p>}
         <div className="mt-4 space-y-2">
           {backups.length === 0 ? (
             <p className="rounded-lg border border-dashed border-slate-300 p-4 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">No database snapshots found.</p>
