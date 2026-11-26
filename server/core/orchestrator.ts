@@ -160,6 +160,7 @@ export function suggestAgentForAction(actionType: ActionType, goalText: string):
   if (actionType === 'test_execution' || actionType === 'code_analysis') {
     return /security|audit|test|lint|review/.test(lower) ? 'quality-auditor' : 'software-engineer';
   }
+  if (actionType === 'social_publish') return 'business-analyst';
   if (actionType === 'payment_purchase' || /profit|revenue|expense|budget|cash|tax|ledger/.test(lower)) {
     return 'finance-assistant';
   }
