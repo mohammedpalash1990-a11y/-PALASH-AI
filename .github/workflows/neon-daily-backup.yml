@@ -82,4 +82,18 @@ jobs:
           name: palash-ai-neon-backup-${{ github.run_id }}
           path: backup-output/palash-ai-backup.json
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 30
+
+      - name: Mark private offsite artifact as completed in Neon
+        if: ${{ github.event.repository.private == true }}
+        env:
+          DATABASE_URL: ${{ steps.neon-db.outputs.database_url }}
+        run: |
+          node --input-type=module <<'NODE'
+          import pg from 'pg';
+          const client = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+          try {
+            await client.connect();
+            await client.query("UPDATE palash_ai_backups SET source='github-actions-private-artifact' WHERE id=(SELECT id FROM palash_ai_backups WHERE source='scheduled-github-actions' ORDER BY id DESC LIMIT 1)");
+          } finally { await client.end(); }
+          NODE
