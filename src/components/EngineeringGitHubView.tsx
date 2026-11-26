@@ -169,7 +169,7 @@ export const EngineeringGitHubView: React.FC<EngineeringGitHubViewProps> = ({
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const [pushBranch, setPushBranch] = useState('feat/palash-ai-sync');
   const [commitMessage, setCommitMessage] = useState('feat: sync PALASH AI command center updates');
-  const [createPrOnPush, setCreatePrOnPush] = useState(true);
+  const createPrOnPush = true;
   const [prPushTitle, setPrPushTitle] = useState('Sync PALASH AI autonomous command center updates');
   const [pushing, setPushing] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
@@ -586,7 +586,7 @@ export const EngineeringGitHubView: React.FC<EngineeringGitHubViewProps> = ({
           baseBranch: diffBaseBranch.trim() || 'main',
           commitMessage: commitMessage.trim(),
           filePaths: selectedPaths,
-          createPullRequest: createPrOnPush && pushBranch.trim() !== (diffBaseBranch.trim() || 'main'),
+          createPullRequest: createPrOnPush,
           prTitle: prPushTitle.trim() || commitMessage.trim(),
         }),
       });
@@ -1294,10 +1294,10 @@ export const EngineeringGitHubView: React.FC<EngineeringGitHubViewProps> = ({
                     <input
                       type="checkbox"
                       checked={createPrOnPush}
-                      onChange={(e) => setCreatePrOnPush(e.target.checked)}
+                      disabled
                       className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                     />
-                    <span>Automatically open Pull Request targeting {diffBaseBranch || 'main'}</span>
+                    <span>Pull Request required · target {diffBaseBranch || 'main'}</span>
                   </label>
                   {createPrOnPush && (
                     <div>
@@ -1319,15 +1319,9 @@ export const EngineeringGitHubView: React.FC<EngineeringGitHubViewProps> = ({
 
               <div className="sm:col-span-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {isTargetProtected ? (
-                    <span className="font-medium text-amber-700 dark:text-amber-400">
-                      Protected branch ({pushBranch}): pushing queues an Owner Approval Gate before writing to GitHub.
-                    </span>
-                  ) : (
-                    <span>
-                      Feature branch ({pushBranch}): commits directly and{createPrOnPush ? ` opens PR to ${diffBaseBranch || 'main'}.` : ' skips PR.'}
-                    </span>
-                  )}
+                  <span className="font-medium text-amber-700 dark:text-amber-400">
+                    Feature branch ({pushBranch}) is created only after Owner approval. A pull request targeting {diffBaseBranch || 'main'} is always required; direct base-branch writes are disabled.
+                  </span>
                 </p>
 
                 <button
@@ -1335,6 +1329,7 @@ export const EngineeringGitHubView: React.FC<EngineeringGitHubViewProps> = ({
                   disabled={
                     pushing ||
                     selectedPaths.length === 0 ||
+                    pushBranch.trim() === (diffBaseBranch.trim() || 'main') ||
                     !commitMessage.trim() ||
                     !connection?.connected
                   }
