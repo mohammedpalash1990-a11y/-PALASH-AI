@@ -40,7 +40,7 @@ jobs:
         env:
           DATABASE_URL: ${{ steps.neon-db.outputs.database_url }}
         run: |
-          npm install --no-save --no-audit --no-fund pg
+          npm install --no-save --legacy-peer-deps --no-audit --no-fund pg
           node --input-type=module <<'NODE'
           import pg from 'pg';
           import { createHmac } from 'node:crypto';
