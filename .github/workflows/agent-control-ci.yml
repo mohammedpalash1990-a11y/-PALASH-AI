@@ -32,8 +32,8 @@ jobs:
           import re
           from pathlib import Path
           source = Path(".github/workflows/build-neon-function.yml").read_text()
-          helpers = re.search(r'helpers = r"""\n(.*?)\n          """', source, re.S)
-          routes = re.search(r'routes = r"""\n(.*?)\n          """', source, re.S)
+          helpers = re.search(r'helpers = r"""(.*?)"""', source, re.S)
+          routes = re.search(r'routes = r"""(.*?)"""', source, re.S)
           if not helpers or not routes:
               raise SystemExit("Could not extract Neon worker helpers/routes")
           Path("/tmp/palash-worker-check.mjs").write_text(
