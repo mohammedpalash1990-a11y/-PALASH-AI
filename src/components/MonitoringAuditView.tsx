@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, CheckCircle2, MinusCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Download, MinusCircle, RefreshCw } from 'lucide-react';
 import type { AuditLogItem, HealthStatus } from '../types';
 
 interface MonitoringMetrics {
@@ -23,6 +23,8 @@ interface MonitoringMetrics {
     avgLatencyMs: number;
   }>;
 }
+
+interface BackupItem { id: string; checksum: string; source: string; createdAt: string; storage: string; }
 
 interface ReadinessCheck {
   id: string;
@@ -55,15 +57,19 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
   const [metrics, setMetrics] = useState<MonitoringMetrics | null>(null);
   const [readiness, setReadiness] = useState<ReadinessPayload | null>(null);
   const [search, setSearch] = useState('');
+  const [backups, setBackups] = useState<BackupItem[]>([]);
+  const [backupBusy, setBackupBusy] = useState<string | null>(null);
+  const [backupError, setBackupError] = useState<string | null>(null);
 
   const loadMetrics = async () => {
-    const [metricsRes, readinessRes] = await Promise.all([
+    const [metricsRes, readinessRes, backupsRes] = await Promise.all([
       fetch('/api/monitoring/metrics', {
         headers: { Authorization: `Bearer ${token}` },
       }),
       fetch('/api/system/readiness', {
         headers: { Authorization: `Bearer ${token}` },
       }),
+      fetch('/api/system/backups', { headers: { Authorization: `Bearer ${token}` } }),
     ]);
     if (metricsRes.ok) {
       setMetrics(await metricsRes.json());
@@ -71,11 +77,43 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
     if (readinessRes.ok) {
       setReadiness(await readinessRes.json());
     }
+    if (backupsRes.ok) {
+      const data = await backupsRes.json();
+      setBackups(Array.isArray(data.backups) ? data.backups : []);
+      setBackupError(null);
+    } else {
+      setBackupError('Backup list could not be loaded.');
+    }
   };
 
   useEffect(() => {
     loadMetrics();
   }, [token]);
+
+  const handleDownloadBackup = async (id: string) => {
+    setBackupBusy(id);
+    setBackupError(null);
+    try {
+      const res = await fetch(`/api/system/backups/${encodeURIComponent(id.replace(/^bkp-/, ''))}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.backup?.snapshot) throw new Error(data.error || 'Snapshot export failed.');
+      const blob = new Blob([JSON.stringify(data.backup, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `palash-ai-backup-${id}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setBackupError(error instanceof Error ? error.message : 'Snapshot export failed.');
+    } finally {
+      setBackupBusy(null);
+    }
+  };
 
   const handleRefresh = async () => {
     await Promise.all([loadMetrics(), onRefreshAll()]);
@@ -233,6 +271,35 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
               </div>
             );
           })}
+        </div>
+      </section>
+
+      {/* Neon Backup Archive */}
+      <section className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-2 border-b border-slate-100 pb-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">Neon Backup Archive</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Stored PostgreSQL snapshots. Export downloads the complete JSON snapshot; restore is intentionally disabled.</p>
+          </div>
+          <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{backups.length} saved snapshot(s)</span>
+        </div>
+        {backupError && <p role="alert" className="mt-3 text-xs text-red-600 dark:text-red-400">{backupError}</p>}
+        <div className="mt-4 space-y-2">
+          {backups.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-slate-300 p-4 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">No database snapshots found.</p>
+          ) : backups.map((backup) => (
+            <div key={backup.id} className="flex flex-col gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-slate-900 dark:text-white">{backup.id} <span className="font-normal text-slate-500">· {backup.source}</span></p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{new Date(backup.createdAt).toLocaleString()} · {backup.storage}</p>
+                <p className="mt-1 break-all font-mono text-[10px] text-slate-400">Checksum: {backup.checksum}</p>
+              </div>
+              <button type="button" onClick={() => handleDownloadBackup(backup.id)} disabled={backupBusy === backup.id} className="inline-flex min-h-[38px] shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                {backupBusy === backup.id ? 'Preparing…' : 'Export JSON'}
+              </button>
+            </div>
+          ))}
         </div>
       </section>
 
