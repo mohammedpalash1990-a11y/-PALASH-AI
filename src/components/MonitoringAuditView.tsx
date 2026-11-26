@@ -134,6 +134,28 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
     }
   };
 
+  const handleRestoreBackup = async (id: string) => {
+    if (backupBusy !== null) return;
+    if (!window.confirm(`Request restore of ${id}? This will require Owner approval and will create a safety snapshot before applying the backup.`)) return;
+    setBackupBusy(`restore-${id}`);
+    setBackupError(null);
+    try {
+      const numericId = id.replace(/^bkp-/, '');
+      const res = await fetch(`/api/system/backups/${encodeURIComponent(numericId)}/restore`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Restore approval request failed.');
+      setBackupError(`Restore request ${data.approval?.id || ''} created. Open Approvals and approve it to apply the verified snapshot.`);
+      await Promise.all([loadMetrics(), onRefreshAll()]);
+    } catch (error) {
+      setBackupError(error instanceof Error ? error.message : 'Restore approval request failed.');
+    } finally {
+      setBackupBusy(null);
+    }
+  };
+
   const handleRefresh = async () => {
     await Promise.all([loadMetrics(), onRefreshAll()]);
   };
@@ -298,7 +320,7 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
         <div className="flex flex-col gap-2 border-b border-slate-100 pb-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">Neon Backup Archive</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Stored PostgreSQL snapshots. Export downloads the complete JSON snapshot; restore is intentionally disabled.</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Stored PostgreSQL snapshots. Export and restore are available only for checksum-verified snapshots; restore requires Owner approval and creates a safety snapshot first.</p>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{backups.length} saved snapshot(s)</span>
@@ -320,10 +342,15 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
                 <p className="mt-1 break-all font-mono text-[10px] text-slate-400">Checksum: {backup.checksum}</p>
                 <p className={"mt-1 text-[10px] font-semibold " + (backup.integrity === "verified" ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400")}>Integrity: {backup.integrity === "verified" ? "Verified" : "Not verified"}</p>
               </div>
-              <button type="button" onClick={() => handleDownloadBackup(backup.id)} disabled={backupBusy === backup.id} className="inline-flex min-h-[38px] shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
-                <Download className="h-3.5 w-3.5" aria-hidden="true" />
-                {backupBusy === backup.id ? 'Preparing…' : 'Export JSON'}
-              </button>
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <button type="button" onClick={() => handleDownloadBackup(backup.id)} disabled={backupBusy !== null} className="inline-flex min-h-[38px] items-center justify-center gap-2 rounded-lg border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+                  <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                  {backupBusy === backup.id ? 'Preparing…' : 'Export JSON'}
+                </button>
+                <button type="button" onClick={() => handleRestoreBackup(backup.id)} disabled={backup.integrity !== 'verified' || backupBusy !== null} className="inline-flex min-h-[38px] items-center justify-center gap-2 rounded-lg border border-amber-300 px-3 text-xs font-semibold text-amber-800 hover:bg-amber-50 disabled:opacity-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950/30">
+                  {backupBusy === `restore-${backup.id}` ? 'Requesting…' : 'Request Restore'}
+                </button>
+              </div>
             </div>
           ))}
         </div>
