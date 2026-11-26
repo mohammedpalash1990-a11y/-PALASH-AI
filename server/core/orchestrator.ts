@@ -7,7 +7,7 @@ export const CANONICAL_AGENTS: AgentRecord[] = [
     name: 'Chief Agent',
     title: 'Autonomous Orchestrator',
     specialty: 'Decision making, task decomposition, specialist delegation, approval gating, and executive reporting.',
-    model: 'gemini-4-hydrogen',
+    model: 'gemini-3.8-flash',
     status: 'ready',
     completedTasks: 0,
     failedTasks: 0,
@@ -20,7 +20,7 @@ export const CANONICAL_AGENTS: AgentRecord[] = [
     name: 'Software Engineer',
     title: 'Full-Stack & API Specialist',
     specialty: 'Code authoring, bug diagnosis, APIs, PostgreSQL schemas, and GitHub pull request preparation.',
-    model: 'gemini-4-hydrogen',
+    model: 'gemini-3.8-flash',
     status: 'ready',
     completedTasks: 0,
     failedTasks: 0,
@@ -33,7 +33,7 @@ export const CANONICAL_AGENTS: AgentRecord[] = [
     name: 'Project Manager',
     title: 'Delivery & Milestone Lead',
     specialty: 'Project roadmaps, workload balancing, sprint deadlines, and progress tracking across repositories.',
-    model: 'gemini-4-hydrogen',
+    model: 'gemini-3.8-flash',
     status: 'ready',
     completedTasks: 0,
     failedTasks: 0,
@@ -46,7 +46,7 @@ export const CANONICAL_AGENTS: AgentRecord[] = [
     name: 'Business Analyst',
     title: 'Strategy & Market Intelligence',
     specialty: 'Market viability, business diagnostics, customer conversion metrics, and growth recommendations.',
-    model: 'gemini-4-hydrogen',
+    model: 'gemini-3.8-flash',
     status: 'ready',
     completedTasks: 0,
     failedTasks: 0,
@@ -59,7 +59,7 @@ export const CANONICAL_AGENTS: AgentRecord[] = [
     name: 'Finance Assistant',
     title: 'Accounting & Cash Flow Controller',
     specialty: 'Revenue/expense tracking, P&L statements, cash flow forecasting, staff costs, and budget control.',
-    model: 'gemini-4-hydrogen',
+    model: 'gemini-3.8-flash',
     status: 'ready',
     completedTasks: 0,
     failedTasks: 0,
@@ -72,7 +72,7 @@ export const CANONICAL_AGENTS: AgentRecord[] = [
     name: 'Operations Manager',
     title: 'Daily Operations Coordinator',
     specialty: 'POS workflows, inventory efficiency, vendor readiness, and routine operational execution.',
-    model: 'gemini-4-hydrogen',
+    model: 'gemini-3.8-flash',
     status: 'ready',
     completedTasks: 0,
     failedTasks: 0,
@@ -85,7 +85,7 @@ export const CANONICAL_AGENTS: AgentRecord[] = [
     name: 'Quality Auditor',
     title: 'Security & QA Verifier',
     specialty: 'Automated test execution, security review, lint/build checks, and task verification.',
-    model: 'gemini-4-hydrogen',
+    model: 'gemini-3.8-flash',
     status: 'ready',
     completedTasks: 0,
     failedTasks: 0,
@@ -159,6 +159,9 @@ export function suggestAgentForAction(actionType: ActionType, goalText: string):
   }
   if (actionType === 'test_execution' || actionType === 'code_analysis') {
     return /security|audit|test|lint|review/.test(lower) ? 'quality-auditor' : 'software-engineer';
+  }
+  if (actionType === 'social_media_publish' || actionType === 'external_message') {
+    return 'operations-manager';
   }
   if (actionType === 'payment_purchase' || /profit|revenue|expense|budget|cash|tax|ledger/.test(lower)) {
     return 'finance-assistant';

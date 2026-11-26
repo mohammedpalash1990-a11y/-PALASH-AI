@@ -1,0 +1,43 @@
+name: PALASH AI Agent Control CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches:
+      - agent/autonomous-control-center-phase-1
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps --no-audit --no-fund
+      - name: Run core tests
+        run: npm test
+      - name: TypeScript validation
+        run: npm run lint
+      - name: Build web application
+        run: npm run build
+      - name: Validate generated Neon worker route syntax
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          source = Path(".github/workflows/build-neon-function.yml").read_text()
+          helpers = re.search(r'helpers = r"""(.*?)"""', source, re.S)
+          routes = re.search(r'routes = r"""(.*?)"""', source, re.S)
+          if not helpers or not routes:
+              raise SystemExit("Could not extract Neon worker helpers/routes")
+          Path("/tmp/palash-worker-check.mjs").write_text(
+              "async function syntaxCheck() {\n" + helpers.group(1) + "\n" + routes.group(1) + "\n}\n"
+          )
+          PY
+          node --check /tmp/palash-worker-check.mjs

@@ -1931,7 +1931,7 @@ async function createApp(): Promise<express.Express> {
       {
         id: 'approval-gates',
         label: 'Mandatory Human Approval Policy Matrix',
-        passed: Object.keys(APPROVAL_POLICY_MATRIX).length === 10,
+        passed: Object.keys(APPROVAL_POLICY_MATRIX).length === 11,
         detail: 'High-risk actions gated for Owner sign-off',
       },
       {

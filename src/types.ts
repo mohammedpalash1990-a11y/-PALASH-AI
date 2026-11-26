@@ -17,7 +17,8 @@ export type ActionType =
   | 'database_migration'
   | 'database_deletion'
   | 'payment_purchase'
-  | 'external_message';
+  | 'external_message'
+  | 'social_media_publish';
 
 export type NavSection =
   | 'overview'
@@ -139,6 +140,9 @@ export interface ApprovalItem {
   summary: string;
   payloadPreview: string;
   githubPushMeta?: GitHubPushApprovalMeta | null;
+  platform?: string;
+  mediaUrl?: string;
+  publishResult?: { provider: string; postId?: string | null; url?: string | null } | null;
   status: 'pending' | 'approved' | 'rejected';
   decidedBy: string | null;
   decisionNote: string | null;
