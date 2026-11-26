@@ -152,6 +152,14 @@ export const ApprovalsSecurityView: React.FC<ApprovalsSecurityViewProps> = ({
                 </div>
 
                 <p className="text-xs text-slate-700 dark:text-slate-300">{item.summary}</p>
+                {item.actionType === 'social_media_publish' && (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs dark:border-slate-800 dark:bg-slate-950">
+                    <p><span className="font-semibold">Platform:</span> {item.platform || 'Not specified'}</p>
+                    {item.mediaUrl && <p className="mt-1 break-all"><span className="font-semibold">Media URL:</span> {item.mediaUrl}</p>}
+                    <p className="mt-1 text-slate-500 dark:text-slate-400">Approving this request publishes the displayed post publicly.</p>
+                  </div>
+                )}
+
                 <pre className="overflow-x-auto rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-800 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
                   {item.payloadPreview}
                 </pre>
