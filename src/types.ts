@@ -140,6 +140,9 @@ export interface ApprovalItem {
   summary: string;
   payloadPreview: string;
   githubPushMeta?: GitHubPushApprovalMeta | null;
+  platform?: string;
+  mediaUrl?: string;
+  publishResult?: { provider: string; postId?: string | null; url?: string | null } | null;
   status: 'pending' | 'approved' | 'rejected';
   decidedBy: string | null;
   decisionNote: string | null;
