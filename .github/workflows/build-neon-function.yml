@@ -33,19 +33,33 @@ jobs:
           git add deploy/palashai-function-bundled.zip.b64
           git commit -m "Build bundled Neon Function archive"
           git push
+      - name: Resolve Neon database connection
+        id: neon-db
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: |
+          test -n "$NEON_API_KEY" || (echo "NEON_API_KEY secret is missing" && exit 1)
+          DATABASE_URL="$(curl --fail-with-body --silent --show-error \
+            "https://console.neon.tech/api/v2/projects/restless-paper-54015099/connection_uri?branch_id=br-spring-meadow-bhyg1vo9&database_name=palash_ai&role_name=palash_ai_owner" \
+            -H "Authorization: Bearer $NEON_API_KEY" \
+            -H "Accept: application/json" | jq -r '.uri')"
+          test -n "$DATABASE_URL" && test "$DATABASE_URL" != "null" || (echo "Neon DATABASE_URL could not be resolved" && exit 1)
+          echo "::add-mask::$DATABASE_URL"
+          echo "database_url=$DATABASE_URL" >> "$GITHUB_OUTPUT"
       - name: Deploy function to Neon
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          DATABASE_URL: ${{ steps.neon-db.outputs.database_url }}
         run: |
-          test -n "$NEON_API_KEY" || (echo "NEON_API_KEY secret is missing" && exit 1)
           test -n "$GEMINI_API_KEY" || (echo "GEMINI_API_KEY secret is missing" && exit 1)
+          ENV_JSON="$(jq -n --arg gemini "$GEMINI_API_KEY" --arg app "https://br-spring-meadow-bhyg1vo9-palashai.compute.c-10.eu-central-1.aws.neon.tech/" --arg db "$DATABASE_URL" '{GEMINI_API_KEY:$gemini,APP_URL:$app,DATABASE_URL:$db}')"
           curl --fail-with-body --silent --show-error -X POST \
             "https://console.neon.tech/api/v2/projects/restless-paper-54015099/branches/br-spring-meadow-bhyg1vo9/functions/palashai/deployments" \
             -H "Authorization: Bearer $NEON_API_KEY" \
             -F "zip=@palashai-function-bundled.zip" \
             -F "runtime=nodejs24" \
-            -F "environment={\"GEMINI_API_KEY\":\"$GEMINI_API_KEY\",\"APP_URL\":\"https://br-spring-meadow-bhyg1vo9-palashai.compute.c-10.eu-central-1.aws.neon.tech/\"}"
+            -F "environment=$ENV_JSON"
       - uses: actions/upload-artifact@v4
         with:
           name: palashai-function-bundle
