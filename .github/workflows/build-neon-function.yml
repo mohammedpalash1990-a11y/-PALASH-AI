@@ -101,6 +101,8 @@ jobs:
           for old,new in replacements:
             if old not in body: raise SystemExit("Missing route patch target: "+old[:70])
             body=body.replace(old,new,1)
+          body=body.replace('if (path === "/api/tasks" && request.method === "POST") {','if (false && path === "/api/tasks" && request.method === "POST") {',1)
+          body=body.replace('if (path === "/api/projects" && request.method === "POST") {','if (false && path === "/api/projects" && request.method === "POST") {',1)
           p.write_text(head+body)
           PY
           python3 - <<'PY'
