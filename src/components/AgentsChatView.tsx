@@ -416,7 +416,7 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate text-xs font-semibold text-slate-800 dark:text-slate-100">{item.name}</span>
                   <span className={item.connected ? "text-[10px] font-semibold text-emerald-600" : "text-[10px] font-semibold text-amber-600"}>{item.connected ? (item.publishingSupported === false ? "Connected · limited" : "Connected") : "Setup needed"}</span>
-                  {item.connected && ['facebook_page','instagram_business','linkedin','youtube','whatsapp_business'].includes(item.id) && <button type="button" disabled={integrationBusy} onClick={() => handleDisconnectIntegration(item.id)} className="text-[10px] text-red-600 underline">Disconnect</button>
+                  {item.connected && ['facebook_page','instagram_business','linkedin','youtube','whatsapp_business'].includes(item.id) && <button type="button" disabled={integrationBusy} onClick={() => handleDisconnectIntegration(item.id)} className="text-[10px] text-red-600 underline">Disconnect</button>}
                 </div>
                 {item.accountName && <p className="mt-1 truncate text-[10px] text-slate-500 dark:text-slate-400">{item.accountName}</p>}
                 {item.setup && <p className="mt-1 text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">{item.setup}</p>}
