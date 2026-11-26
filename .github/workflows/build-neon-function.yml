@@ -8,6 +8,9 @@ on:
       - ".github/workflows/build-neon-function.yml"
 permissions:
   contents: write
+concurrency:
+  group: palash-ai-neon-function-deploy
+  cancel-in-progress: false
 jobs:
   bundle:
     runs-on: ubuntu-latest
