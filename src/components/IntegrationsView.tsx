@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle2, CircleAlert, Cloud, Github, Instagram, Linkedin, Mail, Youtube } from 'lucide-react';
+import { CircleAlert, Cloud, Github, Instagram, Linkedin, Mail, Youtube } from 'lucide-react';
 
 interface IntegrationItem {
   id: string;
