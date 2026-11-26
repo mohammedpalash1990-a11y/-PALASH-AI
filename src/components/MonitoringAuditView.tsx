@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, CheckCircle2, Download, MinusCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Database, Download, MinusCircle, RefreshCw } from 'lucide-react';
 import type { AuditLogItem, HealthStatus } from '../types';
 
 interface MonitoringMetrics {
@@ -89,6 +89,24 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
   useEffect(() => {
     loadMetrics();
   }, [token]);
+
+  const handleCreateBackup = async () => {
+    setBackupBusy('create');
+    setBackupError(null);
+    try {
+      const res = await fetch('/api/system/backup', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Snapshot creation failed.');
+      await loadMetrics();
+    } catch (error) {
+      setBackupError(error instanceof Error ? error.message : 'Snapshot creation failed.');
+    } finally {
+      setBackupBusy(null);
+    }
+  };
 
   const handleDownloadBackup = async (id: string) => {
     setBackupBusy(id);
@@ -281,7 +299,13 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
             <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">Neon Backup Archive</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">Stored PostgreSQL snapshots. Export downloads the complete JSON snapshot; restore is intentionally disabled.</p>
           </div>
-          <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{backups.length} saved snapshot(s)</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{backups.length} saved snapshot(s)</span>
+            <button type="button" onClick={handleCreateBackup} disabled={backupBusy !== null} className="inline-flex min-h-[38px] items-center justify-center gap-2 rounded-lg bg-teal-700 px-3 text-xs font-semibold text-white hover:bg-teal-800 disabled:opacity-50">
+              <Database className="h-3.5 w-3.5" aria-hidden="true" />
+              {backupBusy === 'create' ? 'Creating…' : 'Create Snapshot'}
+            </button>
+          </div>
         </div>
         {backupError && <p role="alert" className="mt-3 text-xs text-red-600 dark:text-red-400">{backupError}</p>}
         <div className="mt-4 space-y-2">
