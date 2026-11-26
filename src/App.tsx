@@ -11,6 +11,7 @@ import {
   Menu,
   Moon,
   OctagonAlert,
+  PlugZap,
   ShieldCheck,
   Sun,
   TrendingUp,
@@ -23,6 +24,7 @@ import { BusinessFinanceView } from './components/BusinessFinanceView';
 import { DatabaseConsoleView } from './components/DatabaseConsoleView';
 import { EngineeringGitHubView } from './components/EngineeringGitHubView';
 import { MonitoringAuditView } from './components/MonitoringAuditView';
+import { IntegrationsView } from './components/IntegrationsView';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { OverviewView } from './components/OverviewView';
 import { ProjectsCenterView } from './components/ProjectsCenterView';
@@ -53,6 +55,7 @@ const NAV_ITEMS: Array<{ id: NavSection; label: string; shortLabel: string; icon
   { id: 'github', label: 'GitHub Engineering', shortLabel: 'GitHub', icon: GitBranch },
   { id: 'database', label: 'Database Console', shortLabel: 'Database', icon: Database },
   { id: 'monitoring', label: 'Monitoring & Audit', shortLabel: 'Monitor', icon: Activity },
+  { id: 'integrations', label: 'Integrations & Social', shortLabel: 'Connect', icon: PlugZap },
 ];
 
 export default function App() {
@@ -729,6 +732,8 @@ export default function App() {
                   busyAction={busyAction}
                 />
               )}
+
+              {section === 'integrations' && <IntegrationsView token={token} />}
 
               {section === 'monitoring' && (
                 <MonitoringAuditView
