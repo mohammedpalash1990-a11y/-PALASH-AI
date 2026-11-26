@@ -48,48 +48,13 @@ jobs:
               const hash = makeHash(ADMIN_PASSWORD);
               await pool.query(`INSERT INTO users(email,password_hash,role) VALUES($1,$2,'owner') ON CONFLICT(email) DO NOTHING`, [ADMIN_EMAIL, hash]);
             }''', 'persist JWT and optional environment owner')
-          sub('''    if (path === "/api/health") return json({ ok: true, service: "PALASH AI", database: "connected" });
-            if (path === "/api/login" && request.method === "POST") {
-              const b = await request.json();
-              if (String(b.email || "").toLowerCase() !== ADMIN_EMAIL || String(b.password || "").length < 1) return json({ error: "Invalid credentials" }, 401);
-              const q = await pool.query("SELECT id,email,password_hash,role FROM users WHERE email=$1", [ADMIN_EMAIL]);
-              if (!q.rowCount || !verifyHash(String(b.password), q.rows[0].password_hash)) return json({ error: "Invalid credentials" }, 401);
-              await pool.query("INSERT INTO activity_logs(actor,action) VALUES($1,$2)", [ADMIN_EMAIL, "Signed in"]);
-              return json({ token: token(q.rows[0]) });
-            }
-            const identity = auth(request);''', '''    if (path === "/api/health") {
-              const owner = await pool.query("SELECT count(*)::int AS count FROM users WHERE role='owner'");
-              return json({ status: "healthy", service: "PALASH AI", timestamp: new Date().toISOString(), database: { localStoreInitialized: true, tablesCount: 8, postgres: { configured: true, connected: true, database: "palash_ai", version: "PostgreSQL", latencyMs: null, error: null }, persistentStore: { mode: "neon-postgresql", connected: true } }, agentsCount: 7, ownerAccountReady: owner.rows[0].count > 0, geminiConfigured: Boolean(process.env.GEMINI_API_KEY), githubTokenConfigured: Boolean(process.env.GITHUB_TOKEN), emergencyStop: false });
-            }
-            if (path === "/api/auth/status") {
-              const owner = await pool.query("SELECT count(*)::int AS count FROM users WHERE role='owner'");
-              return json({ needsSetup: owner.rows[0].count === 0, envAdminConfigured: Boolean(ADMIN_PASSWORD), suggestedEmail: "mohammedpalash1990@gmail.com" });
-            }
-            if (path === "/api/auth/setup" && request.method === "POST") {
-              const b = await request.json();
-              const email = String(b.email || "").trim().toLowerCase();
-              const password = String(b.password || "");
-              const name = String(b.name || "Palash Owner").trim().slice(0, 120) || "Palash Owner";
-              if (!email.includes("@") || password.length < 8) return json({ error: "A valid email and password of at least 8 characters are required." }, 400);
-              const owner = await pool.query("SELECT count(*)::int AS count FROM users WHERE role='owner'");
-              if (owner.rows[0].count > 0) return json({ error: "Owner account is already configured. Please sign in." }, 409);
-              const q = await pool.query("INSERT INTO users(email,password_hash,role) VALUES($1,$2,'owner') RETURNING id,email,role", [email, makeHash(password)]);
-              await pool.query("INSERT INTO activity_logs(actor,action) VALUES($1,$2)", [email, "Owner account initialized"]);
-              const user = q.rows[0];
-              return json({ token: token(user), user: { id: String(user.id), email: user.email, name, role: user.role } }, 201);
-            }
-            if (path === "/api/auth/logout" && request.method === "POST") return json({ ok: true });
-            if ((path === "/api/login" || path === "/api/auth/login") && request.method === "POST") {
-              const b = await request.json();
-              const email = String(b.email || "").trim().toLowerCase();
-              const password = String(b.password || "");
-              const q = await pool.query("SELECT id,email,password_hash,role FROM users WHERE email=$1 AND role='owner'", [email]);
-              if (!email || !password || !q.rowCount || !verifyHash(password, q.rows[0].password_hash)) return json({ error: "Invalid credentials" }, 401);
-              await pool.query("INSERT INTO activity_logs(actor,action) VALUES($1,$2)", [email, "Signed in"]);
-              const user = q.rows[0];
-              return json({ token: token(user), user: { id: String(user.id), email: user.email, name: "Palash Owner", role: user.role } });
-            }
-            const identity = auth(request);''', 'health and first-run auth routes')
+          sub('if (path === "/api/health") return json({ ok: true, service: "PALASH AI", database: "connected" });', 'if (path === "/api/health") {\\n      const owner = await pool.query("SELECT count(*)::int AS count FROM users WHERE role=\\'owner\\'");\\n      return json({ status: "healthy", service: "PALASH AI", timestamp: new Date().toISOString(), database: { localStoreInitialized: true, tablesCount: 8, postgres: { configured: true, connected: true, database: "palash_ai", version: "PostgreSQL", latencyMs: null, error: null }, persistentStore: { mode: "neon-postgresql", connected: true } }, agentsCount: 7, ownerAccountReady: owner.rows[0].count > 0, geminiConfigured: Boolean(process.env.GEMINI_API_KEY), githubTokenConfigured: Boolean(process.env.GITHUB_TOKEN), emergencyStop: false });\\n    }', 'health')
+          sub('if (path === "/api/login" && request.method === "POST") {', 'if (path === "/api/auth/status") {\\n      const owner = await pool.query("SELECT count(*)::int AS count FROM users WHERE role=\\'owner\\'");\\n      return json({ needsSetup: owner.rows[0].count === 0, envAdminConfigured: Boolean(ADMIN_PASSWORD), suggestedEmail: "mohammedpalash1990@gmail.com" });\\n    }\\n    if (path === "/api/auth/setup" && request.method === "POST") {\\n      const b = await request.json();\\n      const email = String(b.email || "").trim().toLowerCase();\\n      const password = String(b.password || "");\\n      const name = String(b.name || "Palash Owner").trim().slice(0, 120) || "Palash Owner";\\n      if (!email.includes("@") || password.length < 8) return json({ error: "A valid email and password of at least 8 characters are required." }, 400);\\n      const owner = await pool.query("SELECT count(*)::int AS count FROM users WHERE role=\\'owner\\'");\\n      if (owner.rows[0].count > 0) return json({ error: "Owner account is already configured. Please sign in." }, 409);\\n      const q = await pool.query("INSERT INTO users(email,password_hash,role) VALUES($1,$2,\\'owner\\') RETURNING id,email,role", [email, makeHash(password)]);\\n      await pool.query("INSERT INTO activity_logs(actor,action) VALUES($1,$2)", [email, "Owner account initialized"]);\\n      const user = q.rows[0];\\n      return json({ token: token(user), user: { id: String(user.id), email: user.email, name, role: user.role } }, 201);\\n    }\\n    if (path === "/api/auth/logout" && request.method === "POST") return json({ ok: true });\\n    if ((path === "/api/login" || path === "/api/auth/login") && request.method === "POST") {', 'auth routes')
+          sub('if (String(b.email || "").toLowerCase() !== ADMIN_EMAIL || String(b.password || "").length < 1) return json({ error: "Invalid credentials" }, 401);', 'const email = String(b.email || "").trim().toLowerCase();\\n      const password = String(b.password || "");', 'login input')
+          sub('const q = await pool.query("SELECT id,email,password_hash,role FROM users WHERE email=$1", [ADMIN_EMAIL]);', 'const q = await pool.query("SELECT id,email,password_hash,role FROM users WHERE email=$1 AND role=\\'owner\\'", [email]);', 'login query')
+          sub('if (!q.rowCount || !verifyHash(String(b.password), q.rows[0].password_hash)) return json({ error: "Invalid credentials" }, 401);', 'if (!email || !password || !q.rowCount || !verifyHash(password, q.rows[0].password_hash)) return json({ error: "Invalid credentials" }, 401);', 'login verify')
+          sub('await pool.query("INSERT INTO activity_logs(actor,action) VALUES($1,$2)", [ADMIN_EMAIL, "Signed in"]);', 'await pool.query("INSERT INTO activity_logs(actor,action) VALUES($1,$2)", [email, "Signed in"]);', 'login activity')
+          sub('return json({ token: token(q.rows[0]) });', 'const user = q.rows[0];\\n      return json({ token: token(user), user: { id: String(user.id), email: user.email, name: "Palash Owner", role: user.role } });', 'login response')
           sub('if (path === "/api/me") return json({ email: identity.email, role: identity.role });', 'if (path === "/api/me") return json({ id: identity.sub, email: identity.email, name: "Palash Owner", role: identity.role });', 'identity response')
           sub('if (path === "/api/activity") return json((await pool.query("SELECT actor,action,details,created_at FROM activity_logs ORDER BY id DESC LIMIT 20")).rows);', 'if (path === "/api/activity" || path === "/api/audit-logs") return json((await pool.query("SELECT actor,action,details,created_at FROM activity_logs ORDER BY id DESC LIMIT 100")).rows);\n            if (path === "/api/memory") return json([]);', 'audit and memory routes')
           sub('const approvalMatch = path.match(/^\\/api\\/approvals\\/(\\d+)$/);', 'const approvalMatch = path.match(/^\\/api\\/approvals\\/(\\d+)(?:\\/decide)?$/);', 'approval route alias')
