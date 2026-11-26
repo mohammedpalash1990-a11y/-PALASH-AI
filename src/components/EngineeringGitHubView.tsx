@@ -1044,7 +1044,7 @@ export const EngineeringGitHubView: React.FC<EngineeringGitHubViewProps> = ({
               Workspace Sync &amp; Push to {repoOwner}/{repoName}
             </h2>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Compare local PALASH AI workspace files against GitHub, select files to stage, and push via branch PR or Owner-approved direct commit.
+              Edit and stage repository files, compare them with GitHub, then create an isolated feature-branch commit and pull request after Owner approval.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -1371,10 +1371,10 @@ export const EngineeringGitHubView: React.FC<EngineeringGitHubViewProps> = ({
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="font-semibold">
-                        Direct Push Queued for Owner Approval Gate
+                        Feature-Branch Pull Request Queued for Owner Approval
                       </p>
                       <p className="mt-1 text-emerald-800 dark:text-emerald-300">
-                        {pushOutcome.approval?.title} is awaiting your approval in Approvals &amp; Safety before writing to {repoOwner}/{repoName}.
+                        {pushOutcome.approval?.title} is awaiting your approval in Approvals &amp; Safety before committing selected files and opening a pull request in {repoOwner}/{repoName}.
                       </p>
                     </div>
                     {onNavigateApprovals && (
