@@ -51,6 +51,11 @@ test('Phase 5 approval policy enforces mandatory human approval on high-risk act
   const migration = evaluateActionPolicy('database_migration', false);
   assert.equal(migration.requiresApproval, true);
 
+  const social = evaluateActionPolicy('social_media_publish', false);
+  assert.equal(social.allowedImmediately, false);
+  assert.equal(social.requiresApproval, true);
+  assert.equal(social.rule.riskLevel, 'high');
+
   const halted = evaluateActionPolicy('research', true);
   assert.equal(halted.allowedImmediately, false);
   assert.equal(halted.blockedByEmergencyStop, true);
