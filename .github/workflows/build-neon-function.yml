@@ -32,6 +32,19 @@ jobs:
           git add deploy/palashai-function-bundled.zip.b64
           git commit -m "Build bundled Neon Function archive"
           git push
+      - name: Deploy function to Neon
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          test -n "$NEON_API_KEY" || (echo "NEON_API_KEY secret is missing" && exit 1)
+          test -n "$GEMINI_API_KEY" || (echo "GEMINI_API_KEY secret is missing" && exit 1)
+          curl --fail-with-body --silent --show-error -X POST \
+            "https://console.neon.tech/api/v2/projects/restless-paper-54015099/branches/br-spring-meadow-bhyg1vo9/functions/palashai/deployments" \
+            -H "Authorization: Bearer $NEON_API_KEY" \
+            -F "zip=@palashai-function-bundled.zip" \
+            -F "runtime=nodejs24" \
+            -F "environment={\"GEMINI_API_KEY\":\"$GEMINI_API_KEY\",\"APP_URL\":\"https://br-spring-meadow-bhyg1vo9-palashai.compute.c-10.eu-central-1.aws.neon.tech/\"}"
       - uses: actions/upload-artifact@v4
         with:
           name: palashai-function-bundle
