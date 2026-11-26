@@ -1,6 +1,9 @@
 name: PALASH AI Daily Neon Backup
 
 on:
+  push:
+    paths:
+      - ".github/workflows/neon-daily-backup.yml"
   workflow_dispatch:
   schedule:
     - cron: "17 2 * * *"
