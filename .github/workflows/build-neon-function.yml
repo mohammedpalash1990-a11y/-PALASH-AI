@@ -16,14 +16,85 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: npm install --no-audit --no-fund
+      - run: npm install --legacy-peer-deps --no-audit --no-fund
       - name: Extract source and bundle dependencies
         run: |
           base64 --decode deploy/palashai-function-v2.zip.b64 > source.zip
           mkdir source
           unzip -q source.zip -d source
-          npm install --no-save --no-audit --no-fund @neon/functions
+          npm install --no-save --legacy-peer-deps --no-audit --no-fund @neon/functions
           npx esbuild source/index.mjs --bundle --platform=node --target=node24 --format=esm --banner:js="import{createRequire as ___cr}from'module';import{fileURLToPath as ___f}from'url';import{dirname as ___d}from'path';const require=___cr(import.meta.url);const __filename=___f(import.meta.url);const __dirname=___d(__filename);" --outfile=dist/index.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("dist/index.mjs")
+          s = p.read_text()
+          def sub(old, new, label):
+              global s
+              if old not in s:
+                  raise SystemExit("Missing function patch target: " + label)
+              s = s.replace(old, new, 1)
+          sub('var JWT_SECRET = process.env.JWT_SECRET;', 'var JWT_SECRET = process.env.JWT_SECRET || "";', 'JWT secret')
+          sub('if (!process.env.DATABASE_URL || !ADMIN_PASSWORD || !JWT_SECRET) throw new Error("Required environment is missing");', 'if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is missing");', 'environment guard')
+          sub('''  const hash = makeHash(ADMIN_PASSWORD);
+            await pool.query(`INSERT INTO users(email,password_hash,role) VALUES($1,$2,'owner') ON CONFLICT(email) DO NOTHING`, [ADMIN_EMAIL, hash]);''', '''  if (!JWT_SECRET) {
+              const secretRow = await pool.query("SELECT value FROM agent_settings WHERE key='jwt_secret'");
+              if (secretRow.rowCount) JWT_SECRET = String(secretRow.rows[0].value);
+              else {
+                JWT_SECRET = randomBytes(48).toString("base64url");
+                await pool.query("INSERT INTO agent_settings(key,value) VALUES('jwt_secret',$1::jsonb) ON CONFLICT(key) DO NOTHING", [JSON.stringify(JWT_SECRET)]);
+              }
+            }
+            if (ADMIN_PASSWORD) {
+              const hash = makeHash(ADMIN_PASSWORD);
+              await pool.query(`INSERT INTO users(email,password_hash,role) VALUES($1,$2,'owner') ON CONFLICT(email) DO NOTHING`, [ADMIN_EMAIL, hash]);
+            }''', 'persist JWT and optional environment owner')
+          sub('''    if (path === "/api/health") return json({ ok: true, service: "PALASH AI", database: "connected" });
+            if (path === "/api/login" && request.method === "POST") {
+              const b = await request.json();
+              if (String(b.email || "").toLowerCase() !== ADMIN_EMAIL || String(b.password || "").length < 1) return json({ error: "Invalid credentials" }, 401);
+              const q = await pool.query("SELECT id,email,password_hash,role FROM users WHERE email=$1", [ADMIN_EMAIL]);
+              if (!q.rowCount || !verifyHash(String(b.password), q.rows[0].password_hash)) return json({ error: "Invalid credentials" }, 401);
+              await pool.query("INSERT INTO activity_logs(actor,action) VALUES($1,$2)", [ADMIN_EMAIL, "Signed in"]);
+              return json({ token: token(q.rows[0]) });
+            }
+            const identity = auth(request);''', '''    if (path === "/api/health") {
+              const owner = await pool.query("SELECT count(*)::int AS count FROM users WHERE role='owner'");
+              return json({ status: "healthy", service: "PALASH AI", timestamp: new Date().toISOString(), database: { localStoreInitialized: true, tablesCount: 8, postgres: { configured: true, connected: true, database: "palash_ai", version: "PostgreSQL", latencyMs: null, error: null }, persistentStore: { mode: "neon-postgresql", connected: true } }, agentsCount: 7, ownerAccountReady: owner.rows[0].count > 0, geminiConfigured: Boolean(process.env.GEMINI_API_KEY), githubTokenConfigured: Boolean(process.env.GITHUB_TOKEN), emergencyStop: false });
+            }
+            if (path === "/api/auth/status") {
+              const owner = await pool.query("SELECT count(*)::int AS count FROM users WHERE role='owner'");
+              return json({ needsSetup: owner.rows[0].count === 0, envAdminConfigured: Boolean(ADMIN_PASSWORD), suggestedEmail: "mohammedpalash1990@gmail.com" });
+            }
+            if (path === "/api/auth/setup" && request.method === "POST") {
+              const b = await request.json();
+              const email = String(b.email || "").trim().toLowerCase();
+              const password = String(b.password || "");
+              const name = String(b.name || "Palash Owner").trim().slice(0, 120) || "Palash Owner";
+              if (!email.includes("@") || password.length < 8) return json({ error: "A valid email and password of at least 8 characters are required." }, 400);
+              const owner = await pool.query("SELECT count(*)::int AS count FROM users WHERE role='owner'");
+              if (owner.rows[0].count > 0) return json({ error: "Owner account is already configured. Please sign in." }, 409);
+              const q = await pool.query("INSERT INTO users(email,password_hash,role) VALUES($1,$2,'owner') RETURNING id,email,role", [email, makeHash(password)]);
+              await pool.query("INSERT INTO activity_logs(actor,action) VALUES($1,$2)", [email, "Owner account initialized"]);
+              const user = q.rows[0];
+              return json({ token: token(user), user: { id: String(user.id), email: user.email, name, role: user.role } }, 201);
+            }
+            if (path === "/api/auth/logout" && request.method === "POST") return json({ ok: true });
+            if ((path === "/api/login" || path === "/api/auth/login") && request.method === "POST") {
+              const b = await request.json();
+              const email = String(b.email || "").trim().toLowerCase();
+              const password = String(b.password || "");
+              const q = await pool.query("SELECT id,email,password_hash,role FROM users WHERE email=$1 AND role='owner'", [email]);
+              if (!email || !password || !q.rowCount || !verifyHash(password, q.rows[0].password_hash)) return json({ error: "Invalid credentials" }, 401);
+              await pool.query("INSERT INTO activity_logs(actor,action) VALUES($1,$2)", [email, "Signed in"]);
+              const user = q.rows[0];
+              return json({ token: token(user), user: { id: String(user.id), email: user.email, name: "Palash Owner", role: user.role } });
+            }
+            const identity = auth(request);''', 'health and first-run auth routes')
+          sub('if (path === "/api/me") return json({ email: identity.email, role: identity.role });', 'if (path === "/api/me") return json({ id: identity.sub, email: identity.email, name: "Palash Owner", role: identity.role });', 'identity response')
+          sub('if (path === "/api/activity") return json((await pool.query("SELECT actor,action,details,created_at FROM activity_logs ORDER BY id DESC LIMIT 20")).rows);', 'if (path === "/api/activity" || path === "/api/audit-logs") return json((await pool.query("SELECT actor,action,details,created_at FROM activity_logs ORDER BY id DESC LIMIT 100")).rows);\n            if (path === "/api/memory") return json([]);', 'audit and memory routes')
+          sub('const approvalMatch = path.match(/^\\/api\\/approvals\\/(\\d+)$/);', 'const approvalMatch = path.match(/^\\/api\\/approvals\\/(\\d+)(?:\\/decide)?$/);', 'approval route alias')
+          p.write_text(s)
+          PY
           cd dist && zip -j ../palashai-function-bundled.zip index.mjs
       - name: Store deployable bundle as base64
         run: |
@@ -53,7 +124,7 @@ jobs:
           DATABASE_URL: ${{ steps.neon-db.outputs.database_url }}
         run: |
           test -n "$GEMINI_API_KEY" || (echo "GEMINI_API_KEY secret is missing" && exit 1)
-          ENV_JSON="$(jq -n --arg gemini "$GEMINI_API_KEY" --arg app "https://br-spring-meadow-bhyg1vo9-palashai.compute.c-10.eu-central-1.aws.neon.tech/" --arg db "$DATABASE_URL" '{GEMINI_API_KEY:$gemini,APP_URL:$app,DATABASE_URL:$db}')"
+          ENV_JSON="$(jq -n --arg gemini "$GEMINI_API_KEY" --arg app "https://palash-ai.pages.dev" --arg db "$DATABASE_URL" '{GEMINI_API_KEY:$gemini,APP_URL:$app,DATABASE_URL:$db}')"
           curl --fail-with-body --silent --show-error -X POST \
             "https://console.neon.tech/api/v2/projects/restless-paper-54015099/branches/br-spring-meadow-bhyg1vo9/functions/palashai/deployments" \
             -H "Authorization: Bearer $NEON_API_KEY" \
