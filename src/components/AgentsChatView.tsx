@@ -48,7 +48,12 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
   const [chatBusy, setChatBusy] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
-  const [integrations, setIntegrations] = useState<Array<{ id: string; name: string; connected: boolean; setup?: string }>>([]);
+  const [integrations, setIntegrations] = useState<Array<{ id: string; name: string; connected: boolean; setup?: string; accountName?: string | null }>>([]);
+  const [integrationProvider, setIntegrationProvider] = useState('facebook_page');
+  const [integrationToken, setIntegrationToken] = useState('');
+  const [integrationAccountId, setIntegrationAccountId] = useState('');
+  const [integrationBusy, setIntegrationBusy] = useState(false);
+  const [integrationError, setIntegrationError] = useState<string | null>(null);
 
   const [showNewTask, setShowNewTask] = useState(false);
   const [taskTitle, setTaskTitle] = useState('');
@@ -105,6 +110,56 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
     const interval = setInterval(fetchLiveProgress, 600);
     return () => clearInterval(interval);
   }, [tasks, busyAction, token]);
+
+  const handleConnectIntegration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!integrationToken.trim()) return;
+    setIntegrationBusy(true);
+    setIntegrationError(null);
+    try {
+      const accountField =
+        integrationProvider === 'facebook_page' ? 'pageId'
+          : integrationProvider === 'instagram_business' ? 'instagramUserId'
+            : integrationProvider === 'whatsapp_business' ? 'phoneNumberId'
+              : 'authorUrn';
+      const body: Record<string, string> = { accessToken: integrationToken.trim() };
+      if (integrationAccountId.trim()) body[accountField] = integrationAccountId.trim();
+      const res = await fetch('/api/integrations/' + integrationProvider + '/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Provider verification failed.');
+      setIntegrationToken('');
+      setIntegrationAccountId('');
+      const status = await fetch('/api/integrations', { headers: { Authorization: 'Bearer ' + token } });
+      if (status.ok) setIntegrations((await status.json()).providers || []);
+    } catch (error) {
+      setIntegrationError(error instanceof Error ? error.message : 'Integration connection failed.');
+    } finally {
+      setIntegrationBusy(false);
+    }
+  };
+
+  const handleDisconnectIntegration = async (provider: string) => {
+    setIntegrationBusy(true);
+    setIntegrationError(null);
+    try {
+      const res = await fetch('/api/integrations/' + provider + '/disconnect', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Disconnect failed.');
+      const status = await fetch('/api/integrations', { headers: { Authorization: 'Bearer ' + token } });
+      if (status.ok) setIntegrations((await status.json()).providers || []);
+    } catch (error) {
+      setIntegrationError(error instanceof Error ? error.message : 'Integration disconnect failed.');
+    } finally {
+      setIntegrationBusy(false);
+    }
+  };
 
   const sendChat = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -361,12 +416,29 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate text-xs font-semibold text-slate-800 dark:text-slate-100">{item.name}</span>
                   <span className={item.connected ? "text-[10px] font-semibold text-emerald-600" : "text-[10px] font-semibold text-amber-600"}>{item.connected ? "Connected" : "Setup needed"}</span>
+                  {item.connected && ['facebook_page','instagram_business','linkedin','youtube','whatsapp_business'].includes(item.id) && <button type="button" disabled={integrationBusy} onClick={() => handleDisconnectIntegration(item.id)} className="text-[10px] text-red-600 underline">Disconnect</button>
                 </div>
                 {item.setup && <p className="mt-1 text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">{item.setup}</p>}
               </div>
             ))}
           </div>
           <p className="mt-3 text-[10px] text-slate-500 dark:text-slate-400">Public social posts are never published without your approval.</p>
+          <form onSubmit={handleConnectIntegration} className="mt-3 space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+            <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">Connect a social account</p>
+            <select value={integrationProvider} onChange={(e) => { setIntegrationProvider(e.target.value); setIntegrationAccountId(''); }} className="min-h-[38px] w-full rounded-lg border border-slate-300 bg-white px-3 text-xs dark:border-slate-700 dark:bg-slate-950">
+              <option value="facebook_page">Facebook Page</option>
+              <option value="instagram_business">Instagram Business</option>
+              <option value="linkedin">LinkedIn</option>
+              <option value="youtube">YouTube</option>
+              <option value="whatsapp_business">WhatsApp Business</option>
+            </select>
+            <input type="password" autoComplete="off" value={integrationToken} onChange={(e) => setIntegrationToken(e.target.value)} placeholder="Provider access token" className="min-h-[38px] w-full rounded-lg border border-slate-300 bg-white px-3 text-xs dark:border-slate-700 dark:bg-slate-950" />
+            {integrationProvider !== 'youtube' && <input type="text" autoComplete="off" value={integrationAccountId} onChange={(e) => setIntegrationAccountId(e.target.value)} placeholder={integrationProvider === 'facebook_page' ? 'Facebook Page ID' : integrationProvider === 'instagram_business' ? 'Instagram Business User ID' : integrationProvider === 'whatsapp_business' ? 'WhatsApp Phone Number ID' : 'LinkedIn author URN (optional)'} className="min-h-[38px] w-full rounded-lg border border-slate-300 bg-white px-3 text-xs dark:border-slate-700 dark:bg-slate-950" />}
+            <button type="submit" disabled={integrationBusy || !integrationToken.trim()} className="min-h-[38px] w-full rounded-lg bg-teal-600 px-3 text-xs font-semibold text-white disabled:opacity-50">{integrationBusy ? 'Verifying account...' : 'Verify & Connect'}</button>
+            {integrationError && <p className="text-[11px] text-red-600">{integrationError}</p>}
+            <p className="text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">Tokens are encrypted before storage and never returned to the browser. Use provider-issued Page, Business, or OAuth tokens only.</p>
+          </form>
+
           <ul className="mt-3 divide-y divide-slate-100 max-h-[380px] overflow-y-auto dark:divide-slate-800">
             {memories.map((mem) => (
               <li key={mem.id} className="py-3">
