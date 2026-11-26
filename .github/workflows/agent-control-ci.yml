@@ -26,3 +26,18 @@ jobs:
         run: npm run lint
       - name: Build web application
         run: npm run build
+      - name: Validate generated Neon worker route syntax
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          source = Path(".github/workflows/build-neon-function.yml").read_text()
+          helpers = re.search(r'helpers = r"""\\n(.*?)\\n          """', source, re.S)
+          routes = re.search(r'routes = r"""\\n(.*?)\\n          """', source, re.S)
+          if not helpers or not routes:
+              raise SystemExit("Could not extract Neon worker helpers/routes")
+          Path("/tmp/palash-worker-check.mjs").write_text(
+              "async function syntaxCheck() {\\n" + helpers.group(1) + "\\n" + routes.group(1) + "\\n}\\n"
+          )
+          PY
+          node --check /tmp/palash-worker-check.mjs
