@@ -48,7 +48,7 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
   const [chatBusy, setChatBusy] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
-  const [integrations, setIntegrations] = useState<Array<{ id: string; name: string; connected: boolean; setup?: string; accountName?: string | null }>>([]);
+  const [integrations, setIntegrations] = useState<Array<{ id: string; name: string; connected: boolean; setup?: string; accountName?: string | null; publishingSupported?: boolean }>>([]);
   const [integrationProvider, setIntegrationProvider] = useState('facebook_page');
   const [integrationToken, setIntegrationToken] = useState('');
   const [integrationAccountId, setIntegrationAccountId] = useState('');
@@ -415,9 +415,10 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
               <div key={item.id} className="rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-800">
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate text-xs font-semibold text-slate-800 dark:text-slate-100">{item.name}</span>
-                  <span className={item.connected ? "text-[10px] font-semibold text-emerald-600" : "text-[10px] font-semibold text-amber-600"}>{item.connected ? "Connected" : "Setup needed"}</span>
+                  <span className={item.connected ? "text-[10px] font-semibold text-emerald-600" : "text-[10px] font-semibold text-amber-600"}>{item.connected ? (item.publishingSupported === false ? "Connected · limited" : "Connected") : "Setup needed"}</span>
                   {item.connected && ['facebook_page','instagram_business','linkedin','youtube','whatsapp_business'].includes(item.id) && <button type="button" disabled={integrationBusy} onClick={() => handleDisconnectIntegration(item.id)} className="text-[10px] text-red-600 underline">Disconnect</button>
                 </div>
+                {item.accountName && <p className="mt-1 truncate text-[10px] text-slate-500 dark:text-slate-400">{item.accountName}</p>}
                 {item.setup && <p className="mt-1 text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">{item.setup}</p>}
               </div>
             ))}
