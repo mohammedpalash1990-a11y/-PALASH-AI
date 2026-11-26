@@ -60,6 +60,41 @@ jobs:
           sub('const approvalMatch = path.match(/^\\/api\\/approvals\\/(\\d+)$/);', 'const approvalMatch = path.match(/^\\/api\\/approvals\\/(\\d+)(?:\\/decide)?$/);', 'approval route alias')
           p.write_text(s)
           PY
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path("dist/index.mjs")
+          s=p.read_text()
+          helper = r"""
+          async function readWorkspaceState() {
+            const r = await pool.query("SELECT state FROM palash_ai_state WHERE id=1");
+            if (!r.rowCount) throw new Error("PALASH AI workspace state is not initialized");
+            return r.rows[0].state;
+          }
+          async function writeWorkspaceState(state) {
+            await pool.query("UPDATE palash_ai_state SET state=$1::jsonb, updated_at=now() WHERE id=1", [JSON.stringify(state)]);
+          }
+          """
+          s=s.replace("var index_default = { async fetch(request) {", helper + "\\nvar index_default = { async fetch(request) {", 1)
+          start=s.index("var index_default =")
+          head, body=s[:start], s[start:]
+          body=re.sub(r'if \\(path === "/api/overview"\\) \\{.*?\\n    \\}', r'''if (path === "/api/overview") {
+                const s=await readWorkspaceState(), tasks=s.tasks||[], approvals=s.approvals||[], projects=s.projects||[], ledger=s.ledger_entries||[], targets=s.budget_targets||[];
+                const revenue=ledger.filter(x=>x.type==="revenue").reduce((n,x)=>n+Number(x.amount||0),0);
+                const expenses=ledger.filter(x=>["expense","staff_cost","inventory"].includes(x.type)).reduce((n,x)=>n+Number(x.amount||0),0);
+                const staff=ledger.filter(x=>x.type==="staff_cost").reduce((n,x)=>n+Number(x.amount||0),0), inventory=ledger.filter(x=>x.type==="inventory").reduce((n,x)=>n+Number(x.amount||0),0);
+                const budget=targets.reduce((n,x)=>n+Number(x.monthlyBudget||0),0), goal=targets.reduce((n,x)=>n+Number(x.revenueTarget||0),0);
+                const financeSummary={totalRevenue:revenue,totalExpenses:expenses,operatingExpenses:expenses-staff-inventory,staffCosts:staff,inventorySpend:inventory,netProfit:revenue-expenses,profitMarginPct:revenue?(revenue-expenses)/revenue*100:0,staffCostRatioPct:revenue?staff/revenue*100:0,budgetUtilizationPct:budget?expenses/budget*100:0,monthlyBudget:budget,revenueTarget:goal,revenueAttainmentPct:goal?revenue/goal*100:0,cashFlowProjection30d:revenue-expenses,categoryBreakdown:ledger.map(x=>({category:x.category,amount:Number(x.amount||0),type:x.type}))};
+                return json({projectsCount:projects.length,agentsCount:(s.agents||[]).length,tasks:{total:tasks.length,queued:tasks.filter(x=>x.status==="queued").length,running:tasks.filter(x=>x.status==="running").length,awaitingApproval:tasks.filter(x=>x.status==="awaiting_approval").length,completed:tasks.filter(x=>x.status==="completed").length,failed:tasks.filter(x=>x.status==="failed").length},pendingApprovalsCount:approvals.filter(x=>x.status==="pending").length,emergencyStop:Boolean(s.system?.emergencyStop),emergencyStopReason:s.system?.emergencyStopReason||null,financeSummary,recentTasks:tasks.slice(0,8),recentApprovals:approvals.slice(0,8),recentAudit:(s.audit_logs||[]).slice(0,8),projects});
+              }''', body, count=1, flags=re.S)
+          body=re.sub(r'if \\(path === "/api/agents"\\).*?;\\n', 'if (path === "/api/agents") { const s=await readWorkspaceState(); return json({agents:s.agents||[],policies:[]}); }\\n', body, count=1)
+          body=re.sub(r'if \\(path === "/api/activity".*?if \\(path === "/api/memory"\\).*?;\\n', 'if (path === "/api/activity" || path === "/api/audit-logs") { const s=await readWorkspaceState(); return json({logs:s.audit_logs||[]}); }\\n    if (path === "/api/memory") { const s=await readWorkspaceState(); return json({memories:s.agent_memory||[]}); }\\n', body, count=1, flags=re.S)
+          body=re.sub(r'if \\(path === "/api/projects" && request.method === "GET"\\).*?;\\n', 'if (path === "/api/projects" && request.method === "GET") { const s=await readWorkspaceState(); return json({projects:s.projects||[]}); }\\n', body, count=1)
+          body=re.sub(r'if \\(path === "/api/tasks" && request.method === "GET"\\).*?;\\n', 'if (path === "/api/tasks" && request.method === "GET") { const s=await readWorkspaceState(); return json({tasks:s.tasks||[]}); }\\n', body, count=1)
+          body=re.sub(r'if \\(path === "/api/approvals"\\).*?;\\n', 'if (path === "/api/approvals") { const s=await readWorkspaceState(); return json({approvals:s.approvals||[]}); }\\n', body, count=1)
+          p.write_text(head+body)
+          PY
+          node --check dist/index.mjs
           cd dist && zip -j ../palashai-function-bundled.zip index.mjs
       - name: Store deployable bundle as base64
         run: |
