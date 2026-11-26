@@ -1,0 +1,29 @@
+name: PALASH AI Agent Control CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches:
+      - agent/autonomous-control-center-phase-1
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps --no-audit --no-fund
+      - name: Run core tests
+        run: npm test
+      - name: TypeScript validation
+        run: npm run lint
+      - name: Build web application
+        run: npm run build
