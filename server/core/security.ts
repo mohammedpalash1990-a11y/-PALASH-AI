@@ -159,6 +159,14 @@ export const APPROVAL_POLICY_MATRIX: Record<ActionType, ApprovalPolicyRule> = {
     requiresHumanApproval: true,
     description: 'Mandatory Owner approval before sending external messages to customers or partners.',
   },
+  social_publish: {
+    actionType: 'social_publish',
+    label: 'Social Media Publishing',
+    requirement: 'mandatory',
+    riskLevel: 'high',
+    requiresHumanApproval: true,
+    description: 'Mandatory Owner approval and verified platform connection before publishing public content.',
+  },
 };
 
 export function evaluateActionPolicy(
