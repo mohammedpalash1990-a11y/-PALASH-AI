@@ -456,6 +456,7 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
                 <option value="database_migration">Database Migration (Mandatory Approval)</option>
                 <option value="production_deploy">Production Deploy (Mandatory Approval)</option>
                 <option value="external_message">External Message (Mandatory Approval)</option>
+                <option value="social_publish">Social Media Publishing (Mandatory Approval)</option>
               </select>
             </div>
 
