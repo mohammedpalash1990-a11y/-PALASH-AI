@@ -70,7 +70,7 @@ jobs:
           from pathlib import Path
           p=Path("dist/index.mjs")
           s=p.read_text()
-          s=s.replace('import { createHmac, timingSafeEqual, scryptSync, randomBytes } from "node:crypto";', 'import { createHmac, timingSafeEqual, scryptSync, randomBytes, createCipheriv, createDecipheriv } from "node:crypto";', 1)
+          s=s.replace('import { createHmac, timingSafeEqual, scryptSync, randomBytes } from "node:crypto";', 'import { createHmac, timingSafeEqual, scryptSync, randomBytes, createCipheriv, createDecipheriv, createHash } from "node:crypto";', 1)
           helper = r"""
           async function readWorkspaceState() {
             const r = await pool.query("SELECT state FROM palash_ai_state WHERE id=1");
@@ -196,6 +196,41 @@ jobs:
             const data=await r.json().catch(()=>({}));
             if(!r.ok) throw new Error(data.message||("GitHub API request failed: "+r.status));
             return {data,headers:r.headers};
+          }
+          function gitBlobSha(content) {
+            return createHash("sha1").update("blob "+Buffer.byteLength(content)+"\\0"+content).digest("hex");
+          }
+          async function executeApprovedGitHubPush(approval, state, identity) {
+            const key=String(approval.pushPayloadKey||"");
+            if(!key) throw new Error("Approved GitHub push payload is missing");
+            const saved=await pool.query("SELECT value FROM agent_settings WHERE key=$1",[key]);
+            if(!saved.rowCount) throw new Error("Staged GitHub changes expired or were removed");
+            const payload=typeof saved.rows[0].value==="string"?JSON.parse(saved.rows[0].value):saved.rows[0].value;
+            const tokenValue=await getGithubToken();
+            if(!tokenValue) throw new Error("GitHub token is not connected");
+            const {owner,repo,branch,baseBranch,commitMessage,prTitle,files}=payload;
+            if(!/^(feat|fix|chore|agent)\\/[A-Za-z0-9._/-]{1,80}$/.test(branch)||branch===baseBranch) throw new Error("Only isolated feature branches are allowed; direct base-branch pushes are blocked");
+            const repoInfo=await githubApi("/repos/"+encodeURIComponent(owner)+"/"+encodeURIComponent(repo),tokenValue);
+            if(repoInfo.data.permissions && repoInfo.data.permissions.push===false) throw new Error("Connected GitHub token does not have repository write permission");
+            const baseRef=await githubApi("/repos/"+encodeURIComponent(owner)+"/"+encodeURIComponent(repo)+"/git/ref/heads/"+encodeURIComponent(baseBranch),tokenValue);
+            const baseCommit=await githubApi("/repos/"+encodeURIComponent(owner)+"/"+encodeURIComponent(repo)+"/git/commits/"+baseRef.data.object.sha,tokenValue);
+            const blobs=[];
+            for(const file of files) {
+              const blob=await githubApi("/repos/"+encodeURIComponent(owner)+"/"+encodeURIComponent(repo)+"/git/blobs",tokenValue,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({content:file.content,encoding:"utf-8"})});
+              blobs.push({path:file.path,mode:"100644",type:"blob",sha:blob.data.sha});
+            }
+            const tree=await githubApi("/repos/"+encodeURIComponent(owner)+"/"+encodeURIComponent(repo)+"/git/trees",tokenValue,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({base_tree:baseCommit.data.tree.sha,tree:blobs})});
+            const commit=await githubApi("/repos/"+encodeURIComponent(owner)+"/"+encodeURIComponent(repo)+"/git/commits",tokenValue,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({message:commitMessage,tree:tree.data.sha,parents:[baseRef.data.object.sha]})});
+            await githubApi("/repos/"+encodeURIComponent(owner)+"/"+encodeURIComponent(repo)+"/git/refs",tokenValue,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({ref:"refs/heads/"+branch,sha:commit.data.sha})});
+            let pr=null;
+            try {
+              const created=await githubApi("/repos/"+encodeURIComponent(owner)+"/"+encodeURIComponent(repo)+"/pulls",tokenValue,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({title:prTitle||commitMessage,head:branch,base:baseBranch,body:"Created by PALASH AI after mandatory Owner approval. Review all changes before merging."})});
+              pr={number:created.data.number,url:created.data.html_url};
+            } catch(error) {
+              if(!String(error.message||"").includes("already exists")) throw error;
+            }
+            await pool.query("DELETE FROM agent_settings WHERE key=$1",[key]);
+            return {owner,repo,branch,baseBranch,commitSha:commit.data.sha,commitUrl:commit.data.html_url,filesPushed:files.length,prNumber:pr?.number||null,prUrl:pr?.url||null};
           }
           """
           s=s.replace("var index_default = { async fetch(request) {",helpers+"\nvar index_default = { async fetch(request) {",1)
