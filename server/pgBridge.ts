@@ -95,25 +95,30 @@ export async function queryPostgresReadOnly(sql: string): Promise<{
 export async function listPostgresTables(): Promise<Array<{ table: string; rows: number; columns: string[] }>> {
   const activePool = getPool();
   if (!activePool) return [];
-  const res = await activePool.query(`
-    SELECT table_name
-    FROM information_schema.tables
-    WHERE table_schema = 'public'
-    ORDER BY table_name
-  `);
-  const tables: Array<{ table: string; rows: number; columns: string[] }> = [];
-  for (const row of res.rows as Array<{ table_name: string }>) {
-    const colRes = await activePool.query(
-      `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 ORDER BY ordinal_position`,
-      [row.table_name]
-    );
-    tables.push({
-      table: row.table_name,
-      rows: 0,
-      columns: (colRes.rows as Array<{ column_name: string }>).map((c) => c.column_name),
-    });
+  try {
+    const res = await activePool.query(`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
+      ORDER BY table_name
+    `);
+    const tables: Array<{ table: string; rows: number; columns: string[] }> = [];
+    for (const row of res.rows as Array<{ table_name: string }>) {
+      const colRes = await activePool.query(
+        `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 ORDER BY ordinal_position`,
+        [row.table_name]
+      );
+      tables.push({
+        table: row.table_name,
+        rows: 0,
+        columns: (colRes.rows as Array<{ column_name: string }>).map((c) => c.column_name),
+      });
+    }
+    return tables;
+  } catch (err) {
+    console.warn('[AI Studio] listPostgresTables failed:', err instanceof Error ? err.message : err);
+    return [];
   }
-  return tables;
 }
 
 export async function bootstrapPostgresSchema(): Promise<{

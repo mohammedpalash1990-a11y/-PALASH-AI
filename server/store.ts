@@ -401,42 +401,51 @@ class PalashStore {
     if (this.initialized) return;
     const databaseUrl = process.env.DATABASE_URL?.trim();
     if (databaseUrl) {
-      const { Pool } = await import('pg');
-      this.databasePool = new Pool({
-        connectionString: databaseUrl,
-        ssl: databaseUrl.includes('localhost') || databaseUrl.includes('127.0.0.1')
-          ? false
-          : { rejectUnauthorized: false },
-        max: 3,
-        connectionTimeoutMillis: 10000,
-        idleTimeoutMillis: 30000,
-      });
-      await this.databasePool.query(`
-        CREATE TABLE IF NOT EXISTS palash_ai_state (
-          id SMALLINT PRIMARY KEY CHECK (id = 1),
-          state JSONB NOT NULL,
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )
-      `);
-      const existing = await this.databasePool.query(
-        'SELECT state FROM palash_ai_state WHERE id = 1'
-      );
-      if (existing.rows[0]?.state) {
-        this.data = existing.rows[0].state as PalashDatabase;
-      } else {
-        await this.databasePool.query(
-          'INSERT INTO palash_ai_state (id, state) VALUES (1, $1::jsonb) ON CONFLICT (id) DO NOTHING',
-          [JSON.stringify(this.data)]
-        );
-        const confirmed = await this.databasePool.query(
+      try {
+        const { Pool } = await import('pg');
+        this.databasePool = new Pool({
+          connectionString: databaseUrl,
+          ssl: databaseUrl.includes('localhost') || databaseUrl.includes('127.0.0.1')
+            ? false
+            : { rejectUnauthorized: false },
+          max: 3,
+          connectionTimeoutMillis: 5000,
+          idleTimeoutMillis: 30000,
+        });
+        await this.databasePool.query(`
+          CREATE TABLE IF NOT EXISTS palash_ai_state (
+            id SMALLINT PRIMARY KEY CHECK (id = 1),
+            state JSONB NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          )
+        `);
+        const existing = await this.databasePool.query(
           'SELECT state FROM palash_ai_state WHERE id = 1'
         );
-        if (confirmed.rows[0]?.state) {
-          this.data = confirmed.rows[0].state as PalashDatabase;
+        if (existing.rows[0]?.state) {
+          this.data = existing.rows[0].state as PalashDatabase;
+        } else {
+          await this.databasePool.query(
+            'INSERT INTO palash_ai_state (id, state) VALUES (1, $1::jsonb) ON CONFLICT (id) DO NOTHING',
+            [JSON.stringify(this.data)]
+          );
+          const confirmed = await this.databasePool.query(
+            'SELECT state FROM palash_ai_state WHERE id = 1'
+          );
+          if (confirmed.rows[0]?.state) {
+            this.data = confirmed.rows[0].state as PalashDatabase;
+          }
+        }
+        this.syncEnvAdmin();
+        await this.persistToDatabase();
+      } catch (err) {
+        this.persistenceError = err instanceof Error ? err.message : String(err);
+        console.warn('[AI Studio] PostgreSQL connection failed, falling back to local store:', this.persistenceError);
+        if (this.databasePool) {
+          await this.databasePool.end().catch(() => {});
+          this.databasePool = null;
         }
       }
-      this.syncEnvAdmin();
-      await this.persistToDatabase();
     }
     this.initialized = true;
   }
@@ -451,11 +460,16 @@ class PalashStore {
 
   private async persistToDatabase(): Promise<void> {
     if (!this.databasePool) return;
-    await this.databasePool.query(
-      'INSERT INTO palash_ai_state (id, state, updated_at) VALUES (1, $1::jsonb, NOW()) ON CONFLICT (id) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW()',
-      [JSON.stringify(this.data)]
-    );
-    this.persistenceError = null;
+    try {
+      await this.databasePool.query(
+        'INSERT INTO palash_ai_state (id, state, updated_at) VALUES (1, $1::jsonb, NOW()) ON CONFLICT (id) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW()',
+        [JSON.stringify(this.data)]
+      );
+      this.persistenceError = null;
+    } catch (err) {
+      this.persistenceError = err instanceof Error ? err.message : String(err);
+      console.warn('[AI Studio] Persistent storage write failed:', this.persistenceError);
+    }
   }
 
   private queueDatabasePersist(): void {
@@ -474,9 +488,11 @@ class PalashStore {
   }
 
   async close(): Promise<void> {
-    await this.flush();
+    try {
+      await this.flush();
+    } catch {}
     if (this.databasePool) {
-      await this.databasePool.end();
+      await this.databasePool.end().catch(() => {});
       this.databasePool = null;
     }
   }
