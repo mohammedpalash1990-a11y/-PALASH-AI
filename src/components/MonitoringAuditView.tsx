@@ -24,7 +24,7 @@ interface MonitoringMetrics {
   }>;
 }
 
-interface BackupItem { id: string; checksum: string; source: string; createdAt: string; storage: string; }
+interface BackupItem { id: string; checksum: string; integrity?: string; source: string; createdAt: string; storage: string; }
 
 interface ReadinessCheck {
   id: string;
@@ -117,6 +117,7 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
       });
       const data = await res.json();
       if (!res.ok || !data.backup?.snapshot) throw new Error(data.error || 'Snapshot export failed.');
+      if (data.backup.integrity !== 'verified') throw new Error('Snapshot checksum could not be verified. Export blocked.');
       const blob = new Blob([JSON.stringify(data.backup, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -317,6 +318,7 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
                 <p className="text-xs font-semibold text-slate-900 dark:text-white">{backup.id} <span className="font-normal text-slate-500">· {backup.source}</span></p>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{new Date(backup.createdAt).toLocaleString()} · {backup.storage}</p>
                 <p className="mt-1 break-all font-mono text-[10px] text-slate-400">Checksum: {backup.checksum}</p>
+                <p className={"mt-1 text-[10px] font-semibold " + (backup.integrity === "verified" ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400")}>Integrity: {backup.integrity === "verified" ? "Verified" : "Not verified"}</p>
               </div>
               <button type="button" onClick={() => handleDownloadBackup(backup.id)} disabled={backupBusy === backup.id} className="inline-flex min-h-[38px] shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
                 <Download className="h-3.5 w-3.5" aria-hidden="true" />
