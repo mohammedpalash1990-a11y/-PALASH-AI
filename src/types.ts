@@ -17,7 +17,8 @@ export type ActionType =
   | 'database_migration'
   | 'database_deletion'
   | 'payment_purchase'
-  | 'external_message';
+  | 'external_message'
+  | 'social_media_publish';
 
 export type NavSection =
   | 'overview'
