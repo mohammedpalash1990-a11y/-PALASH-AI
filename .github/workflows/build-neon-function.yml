@@ -17,6 +17,12 @@ jobs:
         with:
           node-version: 24
       - run: npm install --legacy-peer-deps --no-audit --no-fund
+      - name: Run automated security and core tests
+        run: npm test
+      - name: TypeScript validation
+        run: npm run lint
+      - name: Build production web application
+        run: npm run build
       - name: Extract source and bundle dependencies
         run: |
           base64 --decode deploy/palashai-function-v2.zip.b64 > source.zip
