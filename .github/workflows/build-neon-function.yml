@@ -19,7 +19,7 @@ jobs:
       - run: npm install --legacy-peer-deps --no-audit --no-fund
       - name: Run automated security and core tests
         run: npm test
-      - name: TypeScript validation
+      - name: TypeScript validation (including Cloudflare Pages bindings)
         run: npm run lint
       - name: Build production web application
         run: npm run build
