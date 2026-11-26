@@ -294,7 +294,7 @@ export const EngineeringGitHubView: React.FC<EngineeringGitHubViewProps> = ({
         setPatInput('');
         setAuthFeedback({
           kind: 'info',
-          text: `Verified & connected GitHub account @${data.login} in server memory.`,
+          text: `Verified & connected GitHub account @${data.login}; token stored encrypted in Neon.`,
         });
         if (onRefreshWorkspace) await onRefreshWorkspace();
       }
