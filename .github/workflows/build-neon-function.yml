@@ -5,6 +5,13 @@ on:
     paths:
       - "deploy/palashai-function-v2.zip.b64"
       - "package.json"
+      - "src/**"
+      - "server/**"
+      - "*.ts"
+      - "*.tsx"
+      - "index.html"
+      - "vite.config.ts"
+      - "tsconfig.json"
       - ".github/workflows/build-neon-function.yml"
 permissions:
   contents: write
@@ -17,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -282,6 +289,7 @@ jobs:
           node --check dist/index.mjs
           cd dist && zip -j ../palashai-function-bundled.zip index.mjs
       - name: Resolve Neon database connection
+        if: github.ref == 'refs/heads/main'
         id: neon-db
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
@@ -295,6 +303,7 @@ jobs:
           echo "::add-mask::$DATABASE_URL"
           echo "database_url=$DATABASE_URL" >> "$GITHUB_OUTPUT"
       - name: Deploy function to Neon
+        if: github.ref == 'refs/heads/main'
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
