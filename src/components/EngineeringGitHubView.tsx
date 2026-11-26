@@ -155,6 +155,9 @@ export const EngineeringGitHubView: React.FC<EngineeringGitHubViewProps> = ({
   const [filesError, setFilesError] = useState<string | null>(null);
   const [analyzingPath, setAnalyzingPath] = useState<string | null>(null);
   const [codeAnalysis, setCodeAnalysis] = useState<CodeAnalysisResult | null>(null);
+  const [editedContent, setEditedContent] = useState('');
+  const [stagingFile, setStagingFile] = useState(false);
+  const [stageFeedback, setStageFeedback] = useState<string | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   // Workspace Diff & Push Engine state
@@ -473,11 +476,38 @@ export const EngineeringGitHubView: React.FC<EngineeringGitHubViewProps> = ({
         setAnalysisError(data.error || 'AI source analysis failed.');
       } else {
         setCodeAnalysis(data);
+        setEditedContent(data.content);
+        setStageFeedback(null);
       }
     } catch {
       setAnalysisError('Network error running AI code analysis.');
     } finally {
       setAnalyzingPath(null);
+    }
+  };
+
+  const handleStageFile = async () => {
+    if (!codeAnalysis || !inspection || stagingFile) return;
+    setStagingFile(true);
+    setStageFeedback(null);
+    try {
+      const res = await fetch('/api/github/stage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          owner: inspection.owner,
+          repo: inspection.repo,
+          baseBranch: diffBaseBranch.trim() || inspection.defaultBranch || 'main',
+          files: [{ path: codeAnalysis.path, content: editedContent }],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'File staging failed.');
+      setStageFeedback(`Staged ${codeAnalysis.path}. ${data.count} file(s) ready for diff review.`);
+    } catch (error) {
+      setStageFeedback(error instanceof Error ? error.message : 'File staging failed.');
+    } finally {
+      setStagingFile(false);
     }
   };
 
@@ -971,9 +1001,22 @@ export const EngineeringGitHubView: React.FC<EngineeringGitHubViewProps> = ({
                             {codeAnalysis.size} bytes
                           </span>
                         </div>
-                        <pre className="mt-3 max-h-72 overflow-auto font-mono text-[11px] leading-relaxed text-slate-800 dark:text-slate-200">
-                          {codeAnalysis.content}
-                        </pre>
+                        <textarea
+                          value={editedContent}
+                          onChange={(e) => setEditedContent(e.target.value)}
+                          spellCheck={false}
+                          aria-label={`Edit ${codeAnalysis.path}`}
+                          className="mt-3 min-h-72 w-full resize-y rounded-lg border border-slate-200 bg-white p-3 font-mono text-[11px] leading-relaxed text-slate-800 outline-none focus:border-teal-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void handleStageFile()}
+                          disabled={stagingFile || !inspection}
+                          className="mt-3 inline-flex min-h-[36px] items-center justify-center gap-2 rounded-lg bg-teal-700 px-3 text-xs font-semibold text-white hover:bg-teal-800 disabled:opacity-50"
+                        >
+                          {stagingFile ? 'Staging…' : 'Stage Edited File'}
+                        </button>
+                        {stageFeedback && <p role="status" className="mt-2 text-xs text-slate-600 dark:text-slate-300">{stageFeedback}</p>}
                       </div>
 
                       <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
