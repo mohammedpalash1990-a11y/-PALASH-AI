@@ -98,7 +98,7 @@ ${memoryText || 'None recorded yet.'}
 Owner Objective:
 ${objective}
 
-Decompose this objective into 2 to 4 concrete, sequential, non-overlapping tasks assigned to the best agents. Use realistic actionType values from: research, planning, code_analysis, test_execution, branch_code_change, production_deploy, database_migration, payment_purchase, external_message.`,
+Decompose this objective into 2 to 4 concrete, sequential, non-overlapping tasks assigned to the best agents. Use realistic actionType values from: research, planning, code_analysis, test_execution, branch_code_change, production_deploy, database_migration, payment_purchase, external_message, social_media_publish.`,
       config: {
         systemInstruction:
           'You are the Chief Agent of PALASH AI, an autonomous multi-agent engineering and business operations system. Never fabricate results, always enforce project isolation, and mark risky code changes, database migrations, or production deployments with their exact actionType so human approval policies engage.',
@@ -143,6 +143,7 @@ Decompose this objective into 2 to 4 concrete, sequential, non-overlapping tasks
     'database_deletion',
     'payment_purchase',
     'external_message',
+    'social_media_publish',
   ]);
 
   const sanitizedTasks: PlannedSubtask[] = (parsed.tasks || []).slice(0, 5).map((t) => ({
