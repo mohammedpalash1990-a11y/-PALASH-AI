@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Activity,
+  BookOpen,
   Bot,
   Database,
   Download,
@@ -9,6 +10,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  MoreHorizontal,
   Moon,
   OctagonAlert,
   ShieldCheck,
@@ -45,14 +47,14 @@ import type {
 } from './types';
 
 const NAV_ITEMS: Array<{ id: NavSection; label: string; shortLabel: string; icon: React.ComponentType<{ className?: string }> }> = [
-  { id: 'overview', label: 'Command Overview', shortLabel: 'Overview', icon: LayoutDashboard },
-  { id: 'agents', label: 'Agents & Queue', shortLabel: 'Agents', icon: Bot },
-  { id: 'approvals', label: 'Approvals & Safety', shortLabel: 'Approvals', icon: ShieldCheck },
-  { id: 'projects', label: 'Projects Center', shortLabel: 'Projects', icon: FolderKanban },
-  { id: 'finance', label: 'Business & P&L', shortLabel: 'Finance', icon: TrendingUp },
-  { id: 'github', label: 'GitHub Engineering', shortLabel: 'GitHub', icon: GitBranch },
-  { id: 'database', label: 'Database Console', shortLabel: 'Database', icon: Database },
-  { id: 'monitoring', label: 'Monitoring & Audit', shortLabel: 'Monitor', icon: Activity },
+  { id: 'overview', label: 'Home', shortLabel: 'Home', icon: LayoutDashboard },
+  { id: 'agents', label: 'AI Assistant & Tasks', shortLabel: 'AI', icon: Bot },
+  { id: 'approvals', label: 'Approvals & Safety', shortLabel: 'Review', icon: ShieldCheck },
+  { id: 'projects', label: 'Projects', shortLabel: 'Projects', icon: FolderKanban },
+  { id: 'finance', label: 'Finance', shortLabel: 'Finance', icon: TrendingUp },
+  { id: 'github', label: 'GitHub', shortLabel: 'GitHub', icon: GitBranch },
+  { id: 'database', label: 'Database', shortLabel: 'Data', icon: Database },
+  { id: 'monitoring', label: 'System Activity', shortLabel: 'Activity', icon: Activity },
 ];
 
 export default function App() {
@@ -472,7 +474,7 @@ export default function App() {
 
   const pendingApprovalsCount = approvals.filter((a) => a.status === 'pending').length;
   const currentNavMeta = NAV_ITEMS.find((n) => n.id === section) || NAV_ITEMS[0];
-  const mobilePrimaryTabs = NAV_ITEMS.slice(0, 5);
+  const mobilePrimaryTabs = NAV_ITEMS.slice(0, 4);
 
   const navigateToSection = (next: NavSection) => {
     setSection(next);
@@ -500,57 +502,43 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 flex">
+    <div className="workspace-shell min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 flex">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:border-r lg:border-slate-200 lg:bg-white dark:lg:border-slate-800 dark:lg:bg-slate-900">
-        <div className="flex h-16 items-center border-b border-slate-200 px-6 dark:border-slate-800">
-          <span className="font-display text-lg font-bold tracking-tight text-slate-900 dark:text-white whitespace-nowrap">
-            PALASH AI
-          </span>
+      <aside className="workspace-sidebar hidden lg:flex lg:w-[258px] lg:flex-col lg:border-r lg:border-slate-200 lg:bg-white dark:lg:border-slate-800 dark:lg:bg-slate-900">
+        <div className="flex h-[76px] items-center gap-3 border-b border-slate-100 px-5 dark:border-slate-800">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-700 text-white shadow-sm"><Bot className="h-5 w-5" aria-hidden="true" /></div>
+          <div className="min-w-0">
+            <p className="font-display text-base font-bold tracking-tight text-slate-900 dark:text-white">PALASH AI</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Owner workspace</p>
+          </div>
         </div>
-
-        <nav aria-label="Workspace Navigation" className="flex-1 space-y-1 p-3">
-          {NAV_ITEMS.map((item) => {
+        <nav aria-label="Workspace Navigation" className="workspace-nav flex-1 space-y-1 px-3 py-4">
+          <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Workspace</p>
+          {NAV_ITEMS.slice(0, 4).map((item) => {
             const Icon = item.icon;
             const active = section === item.id;
             return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => navigateToSection(item.id)}
-                className={`flex w-full min-h-[42px] items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                  active
-                    ? 'bg-teal-600/10 text-teal-800 dark:bg-teal-500/15 dark:text-teal-300'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
-                }`}
-              >
-                <span className="flex items-center gap-3 whitespace-nowrap">
-                  <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  <span>{item.label}</span>
-                </span>
-                {item.id === 'approvals' && pendingApprovalsCount > 0 && (
-                  <span className="font-mono text-xs font-semibold tabular-nums text-amber-700 dark:text-amber-400">
-                    {pendingApprovalsCount}
-                  </span>
-                )}
+              <button key={item.id} type="button" onClick={() => navigateToSection(item.id)} className={`workspace-nav-item flex w-full min-h-[44px] items-center justify-between rounded-xl px-3 text-sm font-semibold transition-colors ${active ? 'is-active' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'}`}>
+                <span className="flex items-center gap-3 whitespace-nowrap"><Icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" /><span>{item.label}</span></span>
+                {item.id === 'approvals' && pendingApprovalsCount > 0 && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold tabular-nums text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">{pendingApprovalsCount}</span>}
               </button>
             );
           })}
+          <p className="px-3 pb-2 pt-5 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Manage</p>
+          {NAV_ITEMS.slice(4).map((item) => {
+            const Icon = item.icon;
+            const active = section === item.id;
+            return <button key={item.id} type="button" onClick={() => navigateToSection(item.id)} className={`workspace-nav-item flex w-full min-h-[44px] items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors ${active ? 'is-active' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'}`}><Icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" /><span>{item.label}</span></button>;
+          })}
         </nav>
-
-        <div className="border-t border-slate-200 p-4 space-y-3 dark:border-slate-800">
-          <div className="text-xs">
-            <p className="font-semibold text-slate-900 dark:text-white truncate">{user.name}</p>
-            <p className="text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
+        <div className="workspace-profile m-3 rounded-2xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xs font-bold text-teal-800 dark:bg-teal-900/60 dark:text-teal-200">{(user.name || user.email || 'O').slice(0, 1).toUpperCase()}</div>
+            <div className="min-w-0 flex-1 text-xs"><p className="truncate font-semibold text-slate-900 dark:text-white">{user.name}</p><p className="truncate text-slate-500 dark:text-slate-400">Owner account</p></div>
           </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="inline-flex w-full min-h-[38px] items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-          >
-            <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>Sign Out</span>
-          </button>
+          <a href="https://github.com/mohammedpalash1990-a11y/-PALASH-AI/blob/main/USER-MANUAL.md" target="_blank" rel="noreferrer" className="mt-3 flex min-h-[36px] items-center gap-2 rounded-lg px-2 text-xs font-medium text-slate-600 hover:bg-white hover:text-teal-700 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-teal-300"><BookOpen className="h-4 w-4" />User manual</a>
+          <button type="button" onClick={handleDownloadZip} className="flex min-h-[36px] w-full items-center gap-2 rounded-lg px-2 text-xs font-medium text-slate-600 hover:bg-white hover:text-teal-700 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-teal-300"><Download className="h-4 w-4" />Download project files</button>
+          <button type="button" onClick={handleLogout} className="mt-1 inline-flex min-h-[38px] w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"><LogOut className="h-3.5 w-3.5" aria-hidden="true" /><span>Sign out</span></button>
         </div>
       </aside>
 
@@ -567,9 +555,7 @@ export default function App() {
             >
               <Menu className="h-4 w-4" />
             </button>
-            <h1 className="truncate font-display text-base font-semibold text-slate-900 dark:text-white sm:text-lg">
-              {currentNavMeta.label}
-            </h1>
+            <div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[0.15em] text-teal-700 dark:text-teal-400">PALASH AI / OWNER CONSOLE</p><h1 className="truncate font-display text-base font-bold text-slate-900 dark:text-white sm:text-lg">{currentNavMeta.label}</h1></div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -584,16 +570,6 @@ export default function App() {
             />
 
             <PWAInstallButton />
-
-            <button
-              type="button"
-              onClick={handleDownloadZip}
-              title="Download full PALASH AI project source code as ZIP"
-              className="inline-flex min-h-[40px] items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-            >
-              <Download className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" aria-hidden="true" />
-              <span className="hidden sm:inline">Download ZIP</span>
-            </button>
 
             <button
               type="button"
@@ -628,7 +604,7 @@ export default function App() {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl flex-1 p-4 sm:p-6 lg:p-8">
+        <main className="workspace-main mx-auto w-full max-w-[1540px] flex-1 p-3 sm:p-5 xl:p-7">
           {banner && (
             <div
               role={banner.kind === 'error' ? 'alert' : 'status'}
@@ -744,31 +720,22 @@ export default function App() {
       </div>
 
       {/* Mobile Fixed Bottom Navigation (compact <=15% height cap) */}
-      <nav
-        aria-label="Mobile Primary Navigation"
-        className="fixed bottom-0 left-0 right-0 z-40 grid h-16 grid-cols-5 border-t border-slate-200 bg-white/95 backdrop-blur-md lg:hidden dark:border-slate-800 dark:bg-slate-900/95"
-      >
+      <nav aria-label="Mobile Primary Navigation" className="workspace-mobile-nav fixed bottom-0 left-0 right-0 z-40 grid h-[72px] grid-cols-5 border-t border-slate-200 bg-white/95 backdrop-blur-md lg:hidden dark:border-slate-800 dark:bg-slate-900/95">
         {mobilePrimaryTabs.map((item) => {
           const Icon = item.icon;
           const active = section === item.id;
           return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => navigateToSection(item.id)}
-              className={`flex flex-col items-center justify-center min-h-[44px] ${
-                active
-                  ? 'text-teal-700 dark:text-teal-400'
-                  : 'text-slate-500 dark:text-slate-400'
-              }`}
-            >
-              <Icon className="h-5 w-5" aria-hidden="true" />
-              <span className="mt-1 text-[10px] font-medium tracking-tight">
-                {item.shortLabel}
-              </span>
+            <button key={item.id} type="button" onClick={() => navigateToSection(item.id)} className={`flex flex-col items-center justify-center gap-1 min-h-[44px] ${
+              active ? 'text-teal-800 dark:text-teal-300' : 'text-slate-500 dark:text-slate-400'
+            }`}>
+              <Icon className={`h-5 w-5 ${active ? 'stroke-[2.5]' : ''}`} aria-hidden="true" />
+              <span className="text-[10px] font-semibold tracking-tight">{item.shortLabel}</span>
             </button>
           );
         })}
+        <button type="button" onClick={() => setMobileMenuOpen(true)} aria-label="Open more sections" className="flex min-h-[44px] flex-col items-center justify-center gap-1 text-slate-500 dark:text-slate-400">
+          <MoreHorizontal className="h-5 w-5" aria-hidden="true" /><span className="text-[10px] font-semibold">More</span>
+        </button>
       </nav>
 
       {/* Mobile Full Navigation Drawer */}
