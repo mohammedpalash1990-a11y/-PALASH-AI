@@ -12,25 +12,25 @@ PALASH AI is an owner-operated AI command center for project coordination, agent
 4. On later visits, sign in with the same email and password.
 5. Log out when finished on a shared device.
 
-The session token is held in application memory rather than intentionally persisted in browser local storage. A page refresh may require signing in again.
+The session token is kept in the current browser tab's session storage so a page refresh can restore your Owner login. It is not stored in persistent local storage. Signing out, session expiry, or ending the browser tab session requires signing in again. Avoid using a shared or public device.
 
 ## 2. Main navigation
 
 | Section | What it does |
 | --- | --- |
-| Command Overview | Workspace status, project/task counts, approvals, finance summary, and mission planning. |
-| Agents & Queue | Chat with the Chief Agent or a specialist, create tasks, monitor progress, retry eligible failed tasks, and connect supported social accounts. |
+| Home | Workspace status, project/task counts, approvals, finance summary, quick actions, and mission planning. |
+| AI Assistant & Tasks | Chat with the Chief Agent or a specialist, create tasks, monitor progress, retry eligible failed tasks, and connect supported social accounts. |
 | Approvals & Safety | Review or reject approval requests and activate/resume Emergency Stop. |
-| Projects Center | Register projects, set repository details, and track project status/progress. |
-| Business & P&L | Manually record revenue, expenses, staff costs, and inventory spend; review calculated summaries. |
-| GitHub Engineering | Connect a GitHub token, inspect repositories, browse files, request code analysis, review diffs, and stage controlled branch changes. |
-| Database Console | Inspect database tables, run read-only SQL, create migration proposals, and request workspace snapshots. |
-| Monitoring & Audit | Review health, readiness checks, metrics, backup history, and audit events. |
+| Projects | Register projects, search and filter workspaces, and track project status/progress. |
+| Finance | Manually record revenue, expenses, staff costs, and inventory spend; review calculated summaries. |
+| GitHub | Connect a GitHub token, inspect repositories, browse files, request code analysis, review diffs, and stage controlled branch changes. Advanced sync and branch proposals are in expandable sections. |
+| Database | Inspect database tables and create snapshots. Read-only SQL and migration proposals are in expandable advanced sections. |
+| System Activity | Review health, backup history, service metrics, readiness checks, and audit events. Detailed readiness and audit views are expandable. |
 
 ## 3. Chat and natural-language commands
 
-1. Open Agents & Queue.
-2. Select the agent and project context.
+1. Open AI Assistant & Tasks.
+2. Use a suggested prompt or type your own request. Select the agent and project context if you need a specific specialist or workspace.
 3. Enter a question or instruction in the chat box and send it.
 4. The Chief Agent can classify supported instructions into chat, task creation, integration status, social publishing draft, or Emergency Stop/resume.
 5. When a task is created, review its scope and action type in the task queue. Execute it only when the interface offers the execution action.
@@ -70,7 +70,7 @@ Emergency Stop halts agent execution. Activate it immediately if a task behaves 
 
 ## 6. GitHub connection and workflow
 
-1. Open GitHub Engineering.
+1. Open GitHub.
 2. Create a GitHub Personal Access Token with only the repository permissions required for the intended work.
 3. Paste the token into the dedicated GitHub connection field, not chat or a task description.
 4. Confirm the connected GitHub identity and repository access.
@@ -83,7 +83,7 @@ GitHub OAuth is not configured in this release; use the token connection flow. D
 
 ## 7. Social media and messaging integrations
 
-Open Agents & Queue → Integrations. Select a provider, enter its provider-issued access token and required account ID, then connect. PALASH AI verifies the account and stores the integration credential encrypted at rest. Disconnect an account when it is no longer needed.
+Open AI Assistant & Tasks → Connections & Memory → Connect a social account. Select a provider, enter its provider-issued access token and required account ID, then connect. PALASH AI verifies the account and stores the integration credential encrypted at rest. Disconnect an account when it is no longer needed.
 
 | Provider | Current capability |
 | --- | --- |
@@ -107,7 +107,7 @@ Provider app review, business eligibility, scopes, rate limits, and token expiry
 
 ## 9. Finance
 
-The finance ledger is manually maintained. Add revenue, operating expense, staff cost, or inventory entries with the correct project, category, date, currency, and amount. The dashboard calculates totals and margins from those entries.
+The Finance ledger is manually maintained. Add revenue, expense, staff cost, or inventory entries with the correct project, category, date, currency, and amount. The dashboard calculates totals and margins from those entries.
 
 The ledger is not automatically synchronized with bank accounts, POS systems, payment providers, invoices, or tax systems. Verify source records before relying on the figures.
 
@@ -123,7 +123,7 @@ Google Drive and Cloudflare R2 replication are not configured.
 
 ## 11. Monitoring and readiness
 
-Open Monitoring & Audit to inspect service health, database connectivity, AI configuration, agent status, audit history, and production readiness blockers. A green UI/build status does not prove every external provider is connected or every end-to-end workflow is working.
+Open System Activity to inspect service health, database connectivity, AI configuration, agent status, audit history, and production readiness blockers. A green UI/build status does not prove every external provider is connected or every end-to-end workflow is working.
 
 Use the readiness report to identify missing setup. Resolve one blocker at a time and recheck the report.
 
