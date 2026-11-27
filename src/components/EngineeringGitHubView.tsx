@@ -632,13 +632,13 @@ export const EngineeringGitHubView: React.FC<EngineeringGitHubViewProps> = ({
     pushBranch.trim() === 'master';
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 sm:space-y-6">
       {/* Section 1: GitHub Authentication & Repository Connection */}
       <section className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-white">
-              GitHub Account Connection
+              Connect your GitHub account
             </h2>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               {loadingConnection
@@ -774,10 +774,10 @@ export const EngineeringGitHubView: React.FC<EngineeringGitHubViewProps> = ({
       <section className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-1 border-b border-slate-100 pb-4 dark:border-slate-800">
           <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-white">
-            GitHub Repository &amp; Branch Inspector
+            Your repositories
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Inspect branches, commit history, repository files, and AI code reviews for <span className="font-mono">{repoOwner}/{repoName}</span>.
+            Choose a project and inspect its GitHub repository: <span className="font-mono">{repoOwner}/{repoName}</span>.
           </p>
         </div>
 
@@ -835,7 +835,7 @@ export const EngineeringGitHubView: React.FC<EngineeringGitHubViewProps> = ({
               className="inline-flex min-h-[42px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-teal-600 px-4 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
             >
               <Search className="h-4 w-4" aria-hidden="true" />
-              <span>{inspecting ? 'Inspecting...' : 'Inspect Repository'}</span>
+              <span>{inspecting ? 'Inspecting...' : 'Open repository'}</span>
             </button>
           </div>
         </form>
@@ -1037,11 +1037,16 @@ export const EngineeringGitHubView: React.FC<EngineeringGitHubViewProps> = ({
       </section>
 
       {/* Section 3: Workspace Sync, Diff & Push to GitHub */}
+      <details className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
+          <span>Sync files and prepare a GitHub pull request</span><span className="text-xs font-semibold text-teal-700 dark:text-teal-400">Open advanced tools</span>
+        </summary>
+        <div className="px-3 pb-3 sm:px-4 sm:pb-4">
       <section className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-white">
-              Workspace Sync &amp; Push to {repoOwner}/{repoName}
+              Advanced code sync for {repoOwner}/{repoName}
             </h2>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               Edit and stage repository files, compare them with GitHub, then create an isolated feature-branch commit and pull request after Owner approval.
@@ -1418,8 +1423,15 @@ export const EngineeringGitHubView: React.FC<EngineeringGitHubViewProps> = ({
           </div>
         )}
       </section>
+        </div>
+      </details>
 
       {/* Section 4: Propose Branch Change & Merge Approval Gate */}
+      <details className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
+          <span>Submit a branch change for Owner approval</span><span className="text-xs font-semibold text-teal-700 dark:text-teal-400">Open advanced tools</span>
+        </summary>
+        <div className="px-3 pb-3 sm:px-4 sm:pb-4">
       <section className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
         <h2 className="font-display text-base font-semibold text-slate-900 dark:text-white">
           Propose Branch Code Change &amp; PR Merge Gate
@@ -1483,6 +1495,8 @@ export const EngineeringGitHubView: React.FC<EngineeringGitHubViewProps> = ({
           </div>
         </form>
       </section>
+        </div>
+      </details>
     </div>
   );
 };
