@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mic, MicOff, Play, Check, X, ArrowUpRight, AlertTriangle } from 'lucide-react';
+import { Mic, MicOff, Play, Check, X, ArrowUpRight, AlertTriangle, Bot, FolderKanban, GitBranch, ShieldCheck } from 'lucide-react';
 import type { AgentItem, NavSection, OverviewResponse } from '../types';
 
 interface OverviewViewProps {
@@ -155,6 +155,24 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
             {overview.financeSummary.profitMarginPct}% margin across ventures
           </p>
         </div>
+      </section>
+
+      <section aria-label="Quick access" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {[
+          { id: 'agents' as const, label: 'Talk to AI Assistant', detail: 'Chat and create tasks', icon: Bot },
+          { id: 'projects' as const, label: 'Manage projects', detail: 'View all workspaces', icon: FolderKanban },
+          { id: 'github' as const, label: 'Open GitHub tools', detail: 'Inspect code and branches', icon: GitBranch },
+          { id: 'approvals' as const, label: 'Review approvals', detail: pendingApprovals.length ? `${pendingApprovals.length} waiting for you` : 'No requests waiting', icon: ShieldCheck },
+        ].map((item) => {
+          const Icon = item.icon;
+          return (
+            <button key={item.id} type="button" onClick={() => onNavigate(item.id)} className="group flex min-h-[82px] items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 text-left transition-colors hover:border-teal-300 hover:bg-teal-50/50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-teal-800 dark:hover:bg-teal-950/20 sm:p-4">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700 group-hover:bg-teal-100 dark:bg-teal-950/50 dark:text-teal-300"><Icon className="h-5 w-5" aria-hidden="true" /></span>
+              <span className="min-w-0"><span className="block text-xs font-bold text-slate-900 dark:text-white">{item.label}</span><span className="mt-1 block truncate text-[10px] text-slate-500 dark:text-slate-400">{item.detail}</span></span>
+              <ArrowUpRight className="ml-auto h-4 w-4 shrink-0 text-slate-300 group-hover:text-teal-700 dark:text-slate-600 dark:group-hover:text-teal-300" aria-hidden="true" />
+            </button>
+          );
+        })}
       </section>
 
       {/* Chief Agent Quick Mission Orchestrator */}
