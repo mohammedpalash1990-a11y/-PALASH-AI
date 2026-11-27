@@ -1,5 +1,6 @@
 name: Build PALASH AI Neon Function
 # Rebuild after the chat fallback TypeScript fix; deploy the current main branch bundle.
+# Keep this workflow path-triggered so backend-only chat fixes also reach Neon.
 on:
   workflow_dispatch:
   push:
