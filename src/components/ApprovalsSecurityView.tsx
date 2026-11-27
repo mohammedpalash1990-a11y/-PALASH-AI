@@ -241,11 +241,13 @@ export const ApprovalsSecurityView: React.FC<ApprovalsSecurityViewProps> = ({
         )}
       </section>
 
-      {/* Phase 5 Approval Policy Matrix Table */}
-      <section className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-        <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
-          Mandatory Approval &amp; Risk Policy Matrix
-        </h3>
+      {/* Advanced approval policy details */}
+      <details className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+        <summary className="flex min-h-[36px] cursor-pointer list-none items-center justify-between gap-3 font-display text-sm font-semibold text-slate-900 dark:text-white">
+          <span>Advanced safety rules and approval policies</span>
+          <span className="text-xs font-medium text-teal-700 dark:text-teal-400">View policy matrix</span>
+        </summary>
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">These rules control which actions PALASH AI can execute and which actions must wait for your approval.</p>
         <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
           <table className="w-full text-left text-xs">
             <thead className="border-b border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
@@ -282,7 +284,7 @@ export const ApprovalsSecurityView: React.FC<ApprovalsSecurityViewProps> = ({
             </tbody>
           </table>
         </div>
-      </section>
+      </details>
     </div>
   );
 };
