@@ -176,14 +176,14 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
   const totalChecks = readiness?.checks.length ?? 0;
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-5 sm:space-y-6">
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-white">
-            System Reliability, Telemetry &amp; Immutable Audit Logs
+            System status and backups
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Live runtime health, API latency, process footprint, Phase 10 readiness audit, and security audit trail.
+            Check service health, backup status, and recent activity.
           </p>
         </div>
         <button
@@ -192,7 +192,7 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
           className="inline-flex min-h-[40px] items-center gap-2 whitespace-nowrap shrink-0 rounded-lg border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-800 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
         >
           <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>Refresh Telemetry</span>
+          <span>Refresh status</span>
         </button>
       </div>
 
@@ -235,7 +235,7 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-          <p className="text-xs text-slate-500 dark:text-slate-400">Last Verified Backup</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Latest backup</p>
           <p className="mt-2 font-mono text-sm font-semibold tabular-nums text-slate-900 dark:text-white">
             {metrics?.lastBackupAt ? new Date(metrics.lastBackupAt).toLocaleTimeString() : '—'}
           </p>
@@ -245,8 +245,8 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
         </div>
       </section>
 
-      {/* Phase 10 Production Readiness Audit */}
-      <section className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+      {/* System readiness checks */}
+      <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-2 border-b border-slate-100 pb-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
@@ -320,7 +320,12 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
       </section>
 
       {/* Neon Backup Archive */}
-      <section className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+      <details className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
+          <span>View detailed production readiness checks</span><span className="text-xs font-semibold text-teal-700 dark:text-teal-400">Open</span>
+        </summary>
+        <div className="px-3 pb-3 sm:px-4 sm:pb-4">
+<section className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-2 border-b border-slate-100 pb-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">Neon Backup Archive</h3>
@@ -360,12 +365,19 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
           ))}
         </div>
       </section>
+        </div>
+      </details>
 
       {/* Audit Logs */}
-      <section className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+      <details className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
+          <span>View the full security and execution audit log</span><span className="text-xs font-semibold text-teal-700 dark:text-teal-400">Open</span>
+        </summary>
+        <div className="px-3 pb-3 sm:px-4 sm:pb-4">
+<section className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
-            Security &amp; Execution Audit Trail ({filteredLogs.length})
+            Recent activity ({filteredLogs.length})
           </h3>
           <input
             type="search"
@@ -420,6 +432,8 @@ export const MonitoringAuditView: React.FC<MonitoringAuditViewProps> = ({
           </table>
         </div>
       </section>
+        </div>
+      </details>
     </div>
   );
 };
