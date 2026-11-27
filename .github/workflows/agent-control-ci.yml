@@ -5,6 +5,7 @@ on:
     branches: [main]
   push:
     branches:
+      - main
       - agent/autonomous-control-center-phase-1
 
 permissions:
