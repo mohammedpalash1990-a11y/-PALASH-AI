@@ -186,20 +186,33 @@ export async function runSpecialistAgentExecution(
   const response = await withGeminiRetry(() =>
     ai.models.generateContent({
       model: GEMINI_MODEL,
-      contents: `Execute the assigned task rigorously and produce a structured Execution Report with:
-1. Summary of Analysis / Work Performed
-2. Concrete Findings, Code/SQL/Financial Recommendations, or Checklist
-3. Verification Steps & Next Gate
+      contents: `You are preparing an auditable work package for the Owner. Produce a rigorous, implementation-oriented report with these sections:
+1. Objective and Scope
+2. Work Actually Performed (reasoning and analysis only in this execution environment)
+3. Findings, ordered by severity and impact
+4. Exact Next Actions, ordered and independently verifiable
+5. Verification Plan with concrete commands, expected outcomes, and failure handling
+6. Resume Checkpoint: completed steps, remaining steps, blockers, and the precise next step
 
 Task Title: ${task.title}
 Task Description: ${task.description}
 Action Classification: ${task.actionType}
 Project: ${project.name} (${project.slug})
-Scope: ${project.permissionScope}
+Repository: ${project.slug}
+Permission Scope: ${project.permissionScope}
 Project Memory:
-${contextLines || 'No prior memory stored.'}`,
+${contextLines || 'No prior memory stored.'}
+
+Execution requirements:
+- For code_analysis: identify concrete defects, affected files only when known, severity, and reproducible evidence.
+- For test_execution: provide exact test/lint/build commands and distinguish tests actually run from tests merely recommended.
+- For branch_code_change: provide a unified diff proposal with exact repository-relative paths, followed by tests and rollback notes. Do not claim the diff was applied.
+- For research or planning: provide evidence-based findings, decision criteria, dependencies, and a sequenced implementation plan.
+- For any task too large for one pass: split it into small checkpoints and preserve enough detail in the Resume Checkpoint for another run to continue without repeating completed analysis.
+- If repository contents, shell execution, credentials, or external tools are unavailable, state that limitation explicitly and do not invent file contents, test results, commits, deployments, or external actions.
+- Never mark a recommendation, generated patch, or proposed command as an action already executed.`,
       config: {
-        systemInstruction: `You are the ${agent.name} (${agent.title}) inside PALASH AI. Specialty: ${agent.specialty}. Be concrete, technical, accurate, and concise. Never claim you executed an external production deploy or database drop without approval.`,
+        systemInstruction: `You are the ${agent.name} (${agent.title}) inside PALASH AI. Specialty: ${agent.specialty}. Act as a senior autonomous engineering and operations specialist: be precise, evidence-led, technically detailed, and execution-oriented. This call has no repository write, shell, browser, or external-service tools; you can analyze and prepare work packages only. Never claim code was changed, tests were run, a commit was created, or an external action succeeded unless a tool result in this execution proves it. Never bypass Owner approval for restricted actions.`,
       },
     })
   );
