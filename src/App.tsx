@@ -46,6 +46,8 @@ import type {
   TaskItem,
 } from './types';
 
+const SESSION_TOKEN_KEY = 'palash-ai-owner-session';
+
 const NAV_ITEMS: Array<{ id: NavSection; label: string; shortLabel: string; icon: React.ComponentType<{ className?: string }> }> = [
   { id: 'overview', label: 'Home', shortLabel: 'Home', icon: LayoutDashboard },
   { id: 'agents', label: 'AI Assistant & Tasks', shortLabel: 'AI', icon: Bot },
@@ -71,7 +73,7 @@ export default function App() {
     suggestedEmail: 'mohammedpalash1990@gmail.com',
   });
 
-  // In-memory session token (never persisted to localStorage/sessionStorage)
+  // A tab-scoped session survives refresh but is cleared when the browser tab session ends.
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [health, setHealth] = useState<HealthStatus | null>(null);
@@ -98,18 +100,38 @@ export default function App() {
   useEffect(() => {
     const loadBoot = async () => {
       try {
+        const storedToken = window.sessionStorage.getItem(SESSION_TOKEN_KEY);
         const [statusRes, healthRes] = await Promise.all([
           fetch('/api/auth/status'),
           fetch('/api/health'),
         ]);
+
         if (statusRes.ok) {
           const st = await statusRes.json();
           setAuthStatus({ loaded: true, ...st });
         } else {
           setAuthStatus((prev) => ({ ...prev, loaded: true }));
         }
+
         if (healthRes.ok) {
           setHealth(await healthRes.json());
+        }
+
+        if (storedToken) {
+          try {
+            const meRes = await fetch('/api/me', {
+              headers: { Authorization: `Bearer ${storedToken}` },
+            });
+            if (meRes.ok) {
+              const restoredUser = await meRes.json() as AuthUser;
+              setToken(storedToken);
+              setUser(restoredUser);
+            } else if (meRes.status === 401 || meRes.status === 403) {
+              window.sessionStorage.removeItem(SESSION_TOKEN_KEY);
+            }
+          } catch {
+            // Keep a valid-looking tab session for a later retry if the API is temporarily unreachable.
+          }
         }
       } catch {
         setAuthStatus((prev) => ({ ...prev, loaded: true }));
@@ -132,8 +154,10 @@ export default function App() {
     ]);
 
     if (ovRes.status === 401) {
+      window.sessionStorage.removeItem(SESSION_TOKEN_KEY);
       setToken(null);
       setUser(null);
+      setOverview(null);
       return;
     }
 
@@ -158,12 +182,18 @@ export default function App() {
   }, [token, refreshWorkspace]);
 
   const handleAuthenticated = (newToken: string, authUser: AuthUser) => {
+    try {
+      window.sessionStorage.setItem(SESSION_TOKEN_KEY, newToken);
+    } catch {
+      setBanner({ kind: 'error', text: 'This browser blocked session storage. Your login may not survive refresh.' });
+    }
     setToken(newToken);
     setUser(authUser);
     setBanner(null);
   };
 
   const handleLogout = async () => {
+    window.sessionStorage.removeItem(SESSION_TOKEN_KEY);
     if (token) {
       await fetch('/api/auth/logout', {
         method: 'POST',
