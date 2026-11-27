@@ -201,7 +201,7 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
 
       // A classifier/command response must never leave the chat with an empty assistant bubble.
       // Fall back to the dedicated conversational endpoint when classification fails or omits a reply.
-      if ((!response.ok && [404, 405, 502, 503, 504].includes(response.status)) ||
+      if ((!response.ok && (response.status === 408 || response.status === 429 || response.status >= 500 || [404, 405].includes(response.status))) ||
           (response.ok && (typeof data.reply !== 'string' || !data.reply.trim()))) {
         response = await fetch('/api/chat', {
           method: 'POST',
