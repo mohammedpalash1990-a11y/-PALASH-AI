@@ -177,8 +177,8 @@ jobs:
             if(!key) throw new Error("GEMINI_API_KEY is not configured");
             // Chat must remain available through alternate models when the primary provider is rate-limited or unavailable.
             const primary=process.env.GEMINI_MODEL || "gemini-3.8-flash";
-            // Try the configured current model first, then stable fallbacks in descending capability.
-            const models=[...new Set([primary,"gemini-3.7-flash","gemini-3.6-flash","gemini-3.5-flash-lite"])];
+            // Prefer currently documented stable Flash models; a stale configured model must never delay the first reply.
+            const models=[...new Set(["gemini-3.8-flash","gemini-3.5-flash-lite","gemini-3.6-flash","gemini-3.1-flash-lite",primary])];
             let lastError="No AI response returned";
             for(const model of models){
               try{
