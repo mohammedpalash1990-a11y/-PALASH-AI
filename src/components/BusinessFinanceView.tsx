@@ -87,19 +87,19 @@ export const BusinessFinanceView: React.FC<BusinessFinanceViewProps> = ({
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-5 sm:space-y-6">
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-white">
-            Business &amp; Financial Intelligence (P&amp;L · Cash Flow · Inventory)
+            Finance overview
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Track revenue, operating expenses, staff payroll, and inventory margins across ventures.
+            See recorded income, expenses, and profit. Entries are added manually.
           </p>
         </div>
         <div>
           <label htmlFor="finance-project-filter" className="sr-only">
-            Filter by Business Venture
+            Filter projects
           </label>
           <select
             id="finance-project-filter"
@@ -107,7 +107,7 @@ export const BusinessFinanceView: React.FC<BusinessFinanceViewProps> = ({
             onChange={(e) => setFilterProjectId(e.target.value)}
             className="min-h-[42px] rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium dark:border-slate-700 dark:bg-slate-950"
           >
-            <option value="all">All Ventures Combined</option>
+            <option value="all">All projects</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -119,7 +119,7 @@ export const BusinessFinanceView: React.FC<BusinessFinanceViewProps> = ({
 
       {/* P&L Metrics Grid */}
       {loading || !summary ? (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           {[1, 2, 3, 4].map((n) => (
             <div
               key={n}
@@ -178,14 +178,14 @@ export const BusinessFinanceView: React.FC<BusinessFinanceViewProps> = ({
       )}
 
       {/* Log New Transaction */}
-      <section className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900">
         <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
-          Record Revenue, Expense, Payroll, or Inventory Entry
+          Add a transaction
         </h3>
         <form onSubmit={handleAddEntry} className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div>
             <label htmlFor="led-project" className="block text-xs font-medium text-slate-700 dark:text-slate-300">
-              Venture / Project
+              Project
             </label>
             <select
               id="led-project"
@@ -203,7 +203,7 @@ export const BusinessFinanceView: React.FC<BusinessFinanceViewProps> = ({
 
           <div>
             <label htmlFor="led-type" className="block text-xs font-medium text-slate-700 dark:text-slate-300">
-              Ledger Type
+              Transaction type
             </label>
             <select
               id="led-type"
@@ -212,8 +212,8 @@ export const BusinessFinanceView: React.FC<BusinessFinanceViewProps> = ({
               className="mt-1 min-h-[42px] w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950"
             >
               <option value="revenue">Revenue</option>
-              <option value="expense">Operating Expense</option>
-              <option value="staff_cost">Staff Cost</option>
+              <option value="expense">Expense</option>
+              <option value="staff_cost">Staff cost</option>
               <option value="inventory">Inventory</option>
             </select>
           </div>
@@ -228,7 +228,7 @@ export const BusinessFinanceView: React.FC<BusinessFinanceViewProps> = ({
               required
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              placeholder="e.g., POS Weekend Sales"
+              placeholder="e.g. Daily sales"
               className="mt-1 min-h-[42px] w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950"
             />
           </div>
@@ -263,14 +263,14 @@ export const BusinessFinanceView: React.FC<BusinessFinanceViewProps> = ({
 
           <div className="sm:col-span-2 lg:col-span-5">
             <label htmlFor="led-desc" className="block text-xs font-medium text-slate-700 dark:text-slate-300">
-              Notes / Settlement Reference
+              Notes (optional)
             </label>
             <input
               id="led-desc"
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Optional description or invoice number..."
+              placeholder="Invoice number or short note..."
               className="mt-1 min-h-[42px] w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950"
             />
           </div>
@@ -281,8 +281,9 @@ export const BusinessFinanceView: React.FC<BusinessFinanceViewProps> = ({
       {/* Financial Ledger Table */}
       <section className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
         <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
-          Financial Ledger ({entries.length} records)
+          Transactions ({entries.length} records)
         </h3>
+        {entries.length === 0 && <p className="mt-3 rounded-xl border border-dashed border-slate-300 p-5 text-center text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">No transactions recorded for this selection.</p>}
         <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
           <table className="w-full text-left text-xs">
             <thead className="border-b border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
