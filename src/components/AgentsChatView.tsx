@@ -164,7 +164,7 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
   const sendChat = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = chatInput.trim();
-    if (!trimmed) return;
+    if (!trimmed || chatBusy) return;
 
     const userMsg: ChatMessage = {
       id: `m-${Date.now()}`,
@@ -178,37 +178,64 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
     setChatError(null);
     setChatBusy(true);
 
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    };
+    const payload = {
+      message: trimmed,
+      agentId: selectedAgentId,
+      projectId: selectedProjectId,
+      history: nextHistory.map((m) => ({ role: m.role, content: m.content })),
+    };
+
     try {
-      const res = await fetch('/api/agent/command', {
+      let response = await fetch('/api/agent/command', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          message: trimmed,
-          agentId: selectedAgentId,
-          projectId: selectedProjectId,
-          history: nextHistory.map((m) => ({ role: m.role, content: m.content })),
-        }),
+        headers,
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(60000),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setChatError(data.error || 'Agent chat failed.');
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `m-${Date.now()}-ai`,
-            role: 'assistant',
-            agentName: data.agentName,
-            content: data.reply,
-            timestamp: data.timestamp,
-          },
-        ]);
+      let data: { reply?: string; agentName?: string; timestamp?: string; error?: string } =
+        await response.json().catch(() => ({}));
+
+      // A classifier/command response must never leave the chat with an empty assistant bubble.
+      // Fall back to the dedicated conversational endpoint when classification fails or omits a reply.
+      if ((!response.ok && [404, 405, 502, 503, 504].includes(response.status)) ||
+          (response.ok && (typeof data.reply !== 'string' || !data.reply.trim()))) {
+        response = await fetch('/api/chat', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(60000),
+        });
+        data = await response.json().catch(() => ({}));
       }
-    } catch {
-      setChatError('Network error reaching agent engine.');
+
+      if (!response.ok) {
+        throw new Error(data.error || `Agent chat failed (HTTP ${response.status}).`);
+      }
+      if (typeof data.reply !== 'string' || !data.reply.trim()) {
+        throw new Error('PALASH AI returned an empty response. Your message is available to retry.');
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `m-${Date.now()}-ai`,
+          role: 'assistant',
+          agentName: data.agentName || agents.find((agent) => agent.id === selectedAgentId)?.name || 'PALASH AI',
+          content: data.reply,
+          timestamp: data.timestamp || new Date().toISOString(),
+        },
+      ]);
+    } catch (error) {
+      setChatInput(trimmed);
+      setChatError(error instanceof Error
+        ? error.name === 'TimeoutError'
+          ? 'PALASH AI did not respond within 60 seconds. Your message is ready to retry.'
+          : error.message
+        : 'Network error reaching agent engine. Your message is ready to retry.');
     } finally {
       setChatBusy(false);
     }
