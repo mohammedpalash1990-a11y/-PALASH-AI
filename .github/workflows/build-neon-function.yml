@@ -201,7 +201,27 @@ jobs:
                 lastError=error?.name==="TimeoutError"?"Gemini request timed out after 15 seconds":String(error?.message||error);
               }
             }
-            throw new Error("All Gemini chat attempts failed: "+lastError);
+            // Optional OpenAI API fallback for owner-directed PALASH AI conversations.
+            // This uses the OpenAI API, not the separate ChatGPT app session or subscription.
+            const openaiKey=process.env.OPENAI_API_KEY;
+            if(openaiKey){
+              try{
+                const response=await fetch("https://api.openai.com/v1/responses",{
+                  method:"POST",
+                  headers:{"content-type":"application/json","authorization":"Bearer "+openaiKey},
+                  body:JSON.stringify({model:process.env.OPENAI_MODEL||"gpt-4.1-mini",input:prompt}),
+                  signal:AbortSignal.timeout(20000)
+                });
+                const data=await response.json().catch(()=>({}));
+                if(!response.ok) throw new Error(data.error?.message||("OpenAI request failed: "+response.status));
+                const output=String(data.output_text||data.output?.flatMap(x=>x.content||[]).filter(x=>x.type==="output_text").map(x=>x.text||"").join("")||"").trim();
+                if(output) return output;
+                throw new Error("OpenAI returned no text");
+              }catch(error){
+                lastError+="; OpenAI fallback: "+String(error?.message||error);
+              }
+            }
+            throw new Error("All configured AI chat attempts failed: "+lastError);
           }
 
           function githubEncryptionKey() { return createHmac("sha256", JWT_SECRET).update("palash-ai-github-token").digest(); }
@@ -397,7 +417,7 @@ jobs:
           DATABASE_URL: ${{ steps.neon-db.outputs.database_url }}
         run: |
           test -n "$GEMINI_API_KEY" || (echo "GEMINI_API_KEY secret is missing" && exit 1)
-          ENV_JSON="$(jq -n --arg gemini "$GEMINI_API_KEY" --arg model "gemini-3.8-flash" --arg app "https://palash-ai.pages.dev" --arg db "$DATABASE_URL" '{GEMINI_API_KEY:$gemini,GEMINI_MODEL:$model,APP_URL:$app,DATABASE_URL:$db}')"
+          ENV_JSON="$(jq -n --arg gemini "$GEMINI_API_KEY" --arg model "gemini-3.8-flash" --arg openai "${{ secrets.OPENAI_API_KEY }}" --arg openai_model "gpt-4.1-mini" --arg app "https://palash-ai.pages.dev" --arg db "$DATABASE_URL" '{GEMINI_API_KEY:$gemini,GEMINI_MODEL:$model,OPENAI_API_KEY:$openai,OPENAI_MODEL:$openai_model,APP_URL:$app,DATABASE_URL:$db}')"
           curl --fail-with-body --silent --show-error -X POST \
             "https://console.neon.tech/api/v2/projects/restless-paper-54015099/branches/br-spring-meadow-bhyg1vo9/functions/palashai/deployments" \
             -H "Authorization: Bearer $NEON_API_KEY" \
