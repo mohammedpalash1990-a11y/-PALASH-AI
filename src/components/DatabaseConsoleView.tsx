@@ -32,7 +32,7 @@ export const DatabaseConsoleView: React.FC<DatabaseConsoleViewProps> = ({
   const [pgConnected, setPgConnected] = useState(false);
   const [pgDbName, setPgDbName] = useState<string | null>(null);
 
-  const [sql, setSql] = useState('SELECT id, name, status, completedTasks, avgLatencyMs FROM agents;');
+  const [sql, setSql] = useState('SELECT * FROM agents LIMIT 20;');
   const [target, setTarget] = useState<'local' | 'postgres'>('local');
   const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
   const [queryError, setQueryError] = useState<string | null>(null);
@@ -161,18 +161,18 @@ export const DatabaseConsoleView: React.FC<DatabaseConsoleViewProps> = ({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 sm:space-y-6">
       {/* Connection Summary & Backup */}
-      <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 lg:flex-row lg:items-center lg:justify-between">
+      <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <Database className="h-5 w-5 text-teal-600 dark:text-teal-400" aria-hidden="true" />
             <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-white">
-              Database Schema &amp; Safe SQL Governance
+              Database and backups
             </h2>
           </div>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Active Engine: <span className="font-mono font-medium text-slate-800 dark:text-slate-200">{mode}</span>
+            Database: <span className="font-mono font-medium text-slate-800 dark:text-slate-200">{mode}</span>
             {pgConnected && pgDbName ? ` · Connected to ${pgDbName}` : ' · Set DATABASE_URL in Secrets to inspect & bootstrap live Neon PG 17'}
           </p>
         </div>
@@ -190,7 +190,7 @@ export const DatabaseConsoleView: React.FC<DatabaseConsoleViewProps> = ({
             className="inline-flex min-h-[42px] items-center gap-2 whitespace-nowrap shrink-0 rounded-lg bg-teal-600 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Database className="h-4 w-4" aria-hidden="true" />
-            <span>{bootstrappingPg ? 'Bootstrapping...' : 'Bootstrap 7-Table Schema (Neon PG)'}</span>
+            <span>{bootstrappingPg ? 'Bootstrapping...' : 'Check / set up database tables'}</span>
           </button>
 
           <button
@@ -199,7 +199,7 @@ export const DatabaseConsoleView: React.FC<DatabaseConsoleViewProps> = ({
             className="inline-flex min-h-[42px] items-center gap-2 whitespace-nowrap shrink-0 rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
           >
             <HardDriveDownload className="h-4 w-4" aria-hidden="true" />
-            <span>Verify &amp; Snapshot Backup</span>
+            <span>Create a backup snapshot</span>
           </button>
         </div>
       </section>
@@ -225,7 +225,7 @@ export const DatabaseConsoleView: React.FC<DatabaseConsoleViewProps> = ({
       {/* 7-Table Schema Grid */}
       <section className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
         <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
-          Schema Tables ({tables.length})
+          Available tables ({tables.length})
         </h3>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {tables.map((t) => (
@@ -252,11 +252,16 @@ export const DatabaseConsoleView: React.FC<DatabaseConsoleViewProps> = ({
       </section>
 
       {/* Safe SQL Runner */}
-      <section className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+      <details className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
+          <span>Read database records with a SQL query</span><span className="text-xs font-semibold text-teal-700 dark:text-teal-400">Open</span>
+        </summary>
+        <div className="px-3 pb-3 sm:px-4 sm:pb-4">
+<section className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
-              Safe Read-Only SQL Console
+              Run a safe SQL query
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Only SELECT, WITH, EXPLAIN, and SHOW TABLES run directly. Destructive SQL (DROP, TRUNCATE) and migrations are intercepted by the SQL Guard.
@@ -365,11 +370,18 @@ export const DatabaseConsoleView: React.FC<DatabaseConsoleViewProps> = ({
           </div>
         )}
       </section>
+        </div>
+      </details>
 
       {/* Migration Proposal Gate */}
-      <section className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+      <details className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
+          <span>Propose a schema change (Owner approval required)</span><span className="text-xs font-semibold text-teal-700 dark:text-teal-400">Open</span>
+        </summary>
+        <div className="px-3 pb-3 sm:px-4 sm:pb-4">
+<section className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
         <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
-          Propose Schema Migration (Mandatory Owner Approval)
+          Propose a database change
         </h3>
         <form onSubmit={handleQueueMigration} className="mt-4 grid gap-3 sm:grid-cols-2">
           <div>
@@ -433,6 +445,8 @@ export const DatabaseConsoleView: React.FC<DatabaseConsoleViewProps> = ({
           <p className="mt-3 text-xs font-medium text-teal-700 dark:text-teal-400">{migNotice}</p>
         )}
       </section>
+        </div>
+      </details>
     </div>
   );
 };
