@@ -1,4 +1,5 @@
 name: Build PALASH AI Neon Function
+# Rebuild after the chat fallback TypeScript fix; deploy the current main branch bundle.
 on:
   workflow_dispatch:
   push:
