@@ -190,14 +190,30 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
     };
 
     try {
-      let response = await fetch('/api/agent/command', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(60000),
-      });
-      let data: { reply?: string; agentName?: string; timestamp?: string; error?: string } =
-        await response.json().catch(() => ({}));
+      let response: Response;
+      let data: { reply?: string; agentName?: string; timestamp?: string; error?: string };
+      try {
+        response = await fetch('/api/agent/command', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(45000),
+        });
+        data = await response.json().catch(() => ({}));
+      } catch (commandError) {
+        // A network failure or timeout on the command router must not prevent a direct chat reply.
+        if (!(commandError instanceof Error) ||
+            !['TypeError', 'TimeoutError', 'AbortError'].includes(commandError.name)) {
+          throw commandError;
+        }
+        response = await fetch('/api/chat', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(60000),
+        });
+        data = await response.json().catch(() => ({}));
+      }
 
       // A classifier/command response must never leave the chat with an empty assistant bubble.
       // Fall back to the dedicated conversational endpoint when classification fails or omits a reply.
@@ -233,7 +249,7 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
       setChatInput(trimmed);
       setChatError(error instanceof Error
         ? error.name === 'TimeoutError'
-          ? 'PALASH AI did not respond within 60 seconds. Your message is ready to retry.'
+          ? 'PALASH AI chat services timed out. Your message is ready to retry.'
           : error.message
         : 'Network error reaching agent engine. Your message is ready to retry.');
     } finally {
