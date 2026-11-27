@@ -175,6 +175,7 @@ jobs:
           async function geminiText(prompt) {
             const key=process.env.GEMINI_API_KEY;
             if(!key) throw new Error("GEMINI_API_KEY is not configured");
+            // Chat must remain available through alternate models when the primary provider is rate-limited or unavailable.
             const primary=process.env.GEMINI_MODEL || "gemini-3.8-flash";
             const models=[...new Set([primary,"gemini-3.5-flash-lite","gemini-3.7-flash"])];
             let lastError="No AI response returned";
