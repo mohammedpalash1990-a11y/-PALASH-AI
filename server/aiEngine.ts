@@ -53,24 +53,6 @@ async function withGeminiRetry<T>(operation: () => Promise<T>, maxRetries = 2): 
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
-  const openaiKey = process.env.OPENAI_API_KEY?.trim();
-  if (openaiKey) {
-    try {
-      const response = await fetch('https://api.openai.com/v1/responses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + openaiKey },
-        body: JSON.stringify({ model: process.env.OPENAI_MODEL?.trim() || 'gpt-4.1-mini', input: 'You are PALASH AI. Reply in the owner language, follow project safety policies, and never claim an action was completed unless verified.' }),
-        signal: AbortSignal.timeout(20_000),
-      });
-      const data = await response.json() as { output_text?: string; output?: Array<{ content?: Array<{ type?: string; text?: string }> }>; error?: { message?: string } };
-      if (!response.ok) throw new Error(data.error?.message || 'OpenAI API request failed.');
-      const output = data.output_text || data.output?.flatMap((item) => item.content || []).filter((item) => item.type === 'output_text').map((item) => item.text || '').join('');
-      if (output?.trim()) return output.trim();
-      throw new Error('OpenAI returned an empty response.');
-    } catch (openaiError) {
-      throw new Error(formatGeminiError(lastErr) + '; OpenAI fallback: ' + (openaiError instanceof Error ? openaiError.message : String(openaiError)));
-    }
-  }
   throw new Error(formatGeminiError(lastErr));
 }
 
@@ -248,10 +230,7 @@ export async function runInteractiveAgentChat(
     .map((h) => `${h.role === 'user' ? 'Owner' : agent.name}: ${h.content}`)
     .join('\n');
 
-  const response = await withGeminiRetry(() =>
-    ai.models.generateContent({
-      model: GEMINI_MODEL,
-      contents: `Project Context: ${project.name} (${project.slug}) · Policy: ${project.deploymentPolicy} · DB: ${project.dbIsolationLabel}
+  const prompt = `Project Context: ${project.name} (${project.slug}) · Policy: ${project.deploymentPolicy} · DB: ${project.dbIsolationLabel}
 Memory:
 ${contextLines || 'None'}
 
@@ -259,14 +238,30 @@ Recent Conversation:
 ${recentTranscript || 'New session'}
 
 Owner Message:
-${message}`,
-      config: {
-        systemInstruction: `You are the ${agent.name} (${agent.title}) of PALASH AI. Specialty: ${agent.specialty}. Respond clearly, practically, and concisely. You can reply in English or Bengali matching the owner's language. Respect all approval gates: never bypass human approval for production deployment, database migration/deletion, payments, or external messages.`,
-      },
-    })
-  );
-
-  const text = response.text?.trim();
+${message}`;
+  const systemInstruction = `You are the ${agent.name} (${agent.title}) of PALASH AI. Specialty: ${agent.specialty}. Respond clearly, practically, and concisely. You can reply in English or Bengali matching the owner's language. Respect all approval gates: never bypass human approval for production deployment, database migration/deletion, payments, or external messages.`;
+  let output = '';
+  try {
+    const response = await withGeminiRetry(() => ai.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: prompt,
+      config: { systemInstruction },
+    }));
+    output = response.text?.trim() || '';
+  } catch (geminiError) {
+    const openaiKey = process.env.OPENAI_API_KEY?.trim();
+    if (!openaiKey) throw geminiError;
+    const response = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + openaiKey },
+      body: JSON.stringify({ model: process.env.OPENAI_MODEL?.trim() || 'gpt-4.1-mini', instructions: systemInstruction, input: prompt }),
+      signal: AbortSignal.timeout(20_000),
+    });
+    const data = await response.json() as { output_text?: string; output?: Array<{ content?: Array<{ type?: string; text?: string }> }>; error?: { message?: string } };
+    if (!response.ok) throw new Error(data.error?.message || 'OpenAI API request failed.');
+    output = data.output_text || data.output?.flatMap((item) => item.content || []).filter((item) => item.type === 'output_text').map((item) => item.text || '').join('');
+  }
+  const text = output.trim();
   if (!text) {
     throw new Error('Agent returned an empty chat response.');
   }
