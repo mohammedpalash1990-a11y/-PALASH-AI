@@ -177,7 +177,8 @@ jobs:
             if(!key) throw new Error("GEMINI_API_KEY is not configured");
             // Chat must remain available through alternate models when the primary provider is rate-limited or unavailable.
             const primary=process.env.GEMINI_MODEL || "gemini-3.8-flash";
-            const models=[...new Set(["gemini-3.7-flash","gemini-3.5-flash-lite",primary])];
+            // Try the configured current model first, then stable fallbacks in descending capability.
+            const models=[...new Set([primary,"gemini-3.7-flash","gemini-3.6-flash","gemini-3.5-flash-lite"])];
             let lastError="No AI response returned";
             for(const model of models){
               try{
@@ -197,7 +198,7 @@ jobs:
                 if(output) return output;
                 lastError="Gemini returned no text"+(data.candidates?.[0]?.finishReason?" ("+data.candidates[0].finishReason+")":"");
               }catch(error){
-                lastError=error?.name==="TimeoutError"?"Gemini request timed out after 45 seconds":String(error?.message||error);
+                lastError=error?.name==="TimeoutError"?"Gemini request timed out after 15 seconds":String(error?.message||error);
               }
             }
             throw new Error("All Gemini chat attempts failed: "+lastError);
