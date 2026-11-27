@@ -53,6 +53,24 @@ async function withGeminiRetry<T>(operation: () => Promise<T>, maxRetries = 2): 
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
+  const openaiKey = process.env.OPENAI_API_KEY?.trim();
+  if (openaiKey) {
+    try {
+      const response = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + openaiKey },
+        body: JSON.stringify({ model: process.env.OPENAI_MODEL?.trim() || 'gpt-4.1-mini', input: 'You are PALASH AI. Reply in the owner language, follow project safety policies, and never claim an action was completed unless verified.' }),
+        signal: AbortSignal.timeout(20_000),
+      });
+      const data = await response.json() as { output_text?: string; output?: Array<{ content?: Array<{ type?: string; text?: string }> }>; error?: { message?: string } };
+      if (!response.ok) throw new Error(data.error?.message || 'OpenAI API request failed.');
+      const output = data.output_text || data.output?.flatMap((item) => item.content || []).filter((item) => item.type === 'output_text').map((item) => item.text || '').join('');
+      if (output?.trim()) return output.trim();
+      throw new Error('OpenAI returned an empty response.');
+    } catch (openaiError) {
+      throw new Error(formatGeminiError(lastErr) + '; OpenAI fallback: ' + (openaiError instanceof Error ? openaiError.message : String(openaiError)));
+    }
+  }
   throw new Error(formatGeminiError(lastErr));
 }
 
