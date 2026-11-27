@@ -225,7 +225,7 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
           id: `m-${Date.now()}-ai`,
           role: 'assistant',
           agentName: data.agentName || agents.find((agent) => agent.id === selectedAgentId)?.name || 'PALASH AI',
-          content: data.reply,
+          content: data.reply as string,
           timestamp: data.timestamp || new Date().toISOString(),
         },
       ]);
