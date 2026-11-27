@@ -108,9 +108,9 @@ export default function App() {
 
         if (statusRes.ok) {
           const st = await statusRes.json();
-          setAuthStatus({ loaded: true, ...st });
+          setAuthStatus({ loaded: false, ...st });
         } else {
-          setAuthStatus((prev) => ({ ...prev, loaded: true }));
+          setAuthStatus((prev) => ({ ...prev, loaded: false }));
         }
 
         if (healthRes.ok) {
@@ -133,6 +133,7 @@ export default function App() {
             // Keep a valid-looking tab session for a later retry if the API is temporarily unreachable.
           }
         }
+        setAuthStatus((prev) => ({ ...prev, loaded: true }));
       } catch {
         setAuthStatus((prev) => ({ ...prev, loaded: true }));
       }
