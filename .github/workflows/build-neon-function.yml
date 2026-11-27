@@ -177,7 +177,7 @@ jobs:
             if(!key) throw new Error("GEMINI_API_KEY is not configured");
             // Chat must remain available through alternate models when the primary provider is rate-limited or unavailable.
             const primary=process.env.GEMINI_MODEL || "gemini-3.8-flash";
-            const models=[...new Set([primary,"gemini-3.5-flash-lite","gemini-3.7-flash"])];
+            const models=[...new Set(["gemini-3.7-flash","gemini-3.5-flash-lite",primary])];
             let lastError="No AI response returned";
             for(const model of models){
               try{
@@ -185,7 +185,7 @@ jobs:
                   method:"POST",
                   headers:{"content-type":"application/json"},
                   body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}]}),
-                  signal:AbortSignal.timeout(45000)
+                  signal:AbortSignal.timeout(15000)
                 });
                 const data=await response.json().catch(()=>({}));
                 if(!response.ok){
