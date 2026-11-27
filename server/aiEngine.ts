@@ -259,7 +259,7 @@ ${message}`;
     });
     const data = await response.json() as { output_text?: string; output?: Array<{ content?: Array<{ type?: string; text?: string }> }>; error?: { message?: string } };
     if (!response.ok) throw new Error(data.error?.message || 'OpenAI API request failed.');
-    output = data.output_text || data.output?.flatMap((item) => item.content || []).filter((item) => item.type === 'output_text').map((item) => item.text || '').join('');
+    output = String(data.output_text || data.output?.flatMap((item) => item.content || []).filter((item) => item.type === 'output_text').map((item) => item.text || '').join('') || '');
   }
   const text = output.trim();
   if (!text) {
