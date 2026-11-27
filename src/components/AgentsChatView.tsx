@@ -311,17 +311,17 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 sm:space-y-6">
       {/* Interactive Agent Chat & Voice Console */}
       <div className="grid gap-6 lg:grid-cols-12">
         <section className="flex flex-col rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 lg:col-span-7">
           <div className="flex flex-col gap-3 border-b border-slate-200 p-5 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-display text-base font-semibold text-slate-900 dark:text-white">
-                Agent Command Chat
+                AI Assistant
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Give PALASH AI a task in Bengali or English. Safe internal work runs automatically; external actions require approval and a connected provider.
+                Chat normally or tell PALASH AI what you need. You can write in Bengali or English.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap shrink-0">
@@ -359,15 +359,24 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
             </div>
           </div>
 
-          <div className="flex-1 space-y-4 overflow-y-auto p-5 min-h-[280px] max-h-[420px]">
+          <div className="flex-1 space-y-4 overflow-y-auto p-5 min-h-[300px] max-h-[520px]">
             {messages.length === 0 ? (
               <div className="py-12 text-center">
                 <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Start an instruction or question in English or Bengali
+                  Ask a question or give PALASH AI an instruction
                 </p>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  Example: &ldquo;Review Saudi Fast Food POS VAT rounding logic and suggest test cases.&rdquo;
+                  Example: &ldquo;Check my projects and tell me what needs attention first.&rdquo;
                 </p>
+                <div className="mx-auto mt-4 flex max-w-xl flex-wrap justify-center gap-2">
+                  {[
+                    'Summarize my project status',
+                    'Find issues in my GitHub project',
+                    'Create a task to review my app',
+                  ].map((prompt) => (
+                    <button key={prompt} type="button" onClick={() => setChatInput(prompt)} className="rounded-full border border-slate-200 bg-white px-3 py-2 text-[11px] font-medium text-slate-600 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-teal-800 dark:hover:bg-teal-950/40">{prompt}</button>
+                  ))}
+                </div>
               </div>
             ) : (
               messages.map((m) => (
@@ -411,7 +420,7 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
               type="text"
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
-              placeholder={emergencyStop ? 'System halted by Emergency Stop' : 'Tell PALASH AI what to do or ask...'}
+              placeholder={emergencyStop ? 'System halted by Emergency Stop' : 'Write a message or command...'}
               disabled={emergencyStop || chatBusy}
               className="min-h-[44px] flex-1 rounded-lg border border-slate-300 bg-white px-3.5 text-sm text-slate-900 focus:border-teal-600 focus:outline-none disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
             />
@@ -445,7 +454,7 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
             <div className="flex items-center gap-2">
               <Brain className="h-4 w-4 text-teal-600 dark:text-teal-400" aria-hidden="true" />
               <h2 className="font-display text-base font-semibold text-slate-900 dark:text-white">
-                Agent Memory &amp; Project Context
+                Connections &amp; Memory
               </h2>
             </div>
             <span className="font-mono text-xs tabular-nums text-slate-500 dark:text-slate-400">
@@ -467,7 +476,11 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
             ))}
           </div>
           <p className="mt-3 text-[10px] text-slate-500 dark:text-slate-400">Public social posts are never published without your approval.</p>
-          <form onSubmit={handleConnectIntegration} className="mt-3 space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+          <details className="mt-3 rounded-xl border border-slate-200 dark:border-slate-800">
+            <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between px-3 text-xs font-semibold text-slate-700 dark:text-slate-200">
+              <span>Connect a social account</span><span className="text-teal-700 dark:text-teal-400">Open setup</span>
+            </summary>
+            <form onSubmit={handleConnectIntegration} className="space-y-2 border-t border-slate-100 p-3 dark:border-slate-800">
             <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">Connect a social account</p>
             <select value={integrationProvider} onChange={(e) => { setIntegrationProvider(e.target.value); setIntegrationAccountId(''); }} className="min-h-[38px] w-full rounded-lg border border-slate-300 bg-white px-3 text-xs dark:border-slate-700 dark:bg-slate-950">
               <option value="facebook_page">Facebook Page</option>
@@ -481,9 +494,14 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
             <button type="submit" disabled={integrationBusy || !integrationToken.trim()} className="min-h-[38px] w-full rounded-lg bg-teal-600 px-3 text-xs font-semibold text-white disabled:opacity-50">{integrationBusy ? 'Verifying account...' : 'Verify & Connect'}</button>
             {integrationError && <p className="text-[11px] text-red-600">{integrationError}</p>}
             <p className="text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">Tokens are encrypted before storage and never returned to the browser. Use provider-issued Page, Business, or OAuth tokens only.</p>
-          </form>
+            </form>
+          </details>
 
-          <ul className="mt-3 divide-y divide-slate-100 max-h-[380px] overflow-y-auto dark:divide-slate-800">
+          <div className="mt-4 flex items-center justify-between">
+            <h3 className="text-xs font-semibold text-slate-800 dark:text-slate-100">Saved agent memory</h3>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">{memories.length} records</span>
+          </div>
+          <ul className="mt-2 divide-y divide-slate-100 max-h-[380px] overflow-y-auto dark:divide-slate-800">
             {memories.map((mem) => (
               <li key={mem.id} className="py-3">
                 <p className="text-xs font-medium text-teal-700 dark:text-teal-400">
@@ -506,10 +524,10 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
         <div className="flex flex-col gap-4 border-b border-slate-100 pb-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-display text-base font-semibold text-slate-900 dark:text-white">
-              Task Queue &amp; Execution Reports
+              Your tasks
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Create specialist tasks, run AI execution, inspect reports, and retry failed jobs.
+              Track work, review results, and retry failed tasks.
             </p>
           </div>
 
@@ -537,7 +555,7 @@ export const AgentsChatView: React.FC<AgentsChatViewProps> = ({
               className="inline-flex min-h-[40px] items-center gap-1.5 whitespace-nowrap shrink-0 rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800 dark:bg-teal-600 dark:hover:bg-teal-700"
             >
               <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Assign Task</span>
+              <span>New task</span>
             </button>
           </div>
         </div>
