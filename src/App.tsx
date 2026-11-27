@@ -182,14 +182,17 @@ export default function App() {
   }, [token, refreshWorkspace]);
 
   const handleAuthenticated = (newToken: string, authUser: AuthUser) => {
+    let storageFailed = false;
     try {
       window.sessionStorage.setItem(SESSION_TOKEN_KEY, newToken);
     } catch {
-      setBanner({ kind: 'error', text: 'This browser blocked session storage. Your login may not survive refresh.' });
+      storageFailed = true;
     }
     setToken(newToken);
     setUser(authUser);
-    setBanner(null);
+    setBanner(storageFailed
+      ? { kind: 'error', text: 'This browser blocked session storage. Your login may not survive refresh.' }
+      : null);
   };
 
   const handleLogout = async () => {
